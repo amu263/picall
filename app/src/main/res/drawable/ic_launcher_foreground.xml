@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 相机光圈图标 -->
+    <group
+        android:translateX="27"
+        android:translateY="27">
+        <!-- 外圈 -->
+        <path
+            android:fillColor="#E94560"
+            android:pathData="M27,0C41.912,0 54,12.088 54,27C54,41.912 41.912,54 27,54C12.088,54 0,41.912 0,27C0,12.088 12.088,0 27,0ZM27,8C16.507,8 8,16.507 8,27C8,37.493 16.507,46 27,46C37.493,46 46,37.493 46,27C46,16.507 37.493,8 27,8Z"/>
+        <!-- 内圈 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M27,14C34.18,14 40,19.82 40,27C40,34.18 34.18,40 27,40C19.82,40 14,34.18 14,27C14,19.82 19.82,14 27,14Z"/>
+        <!-- 快门叶片 -->
+        <path
+            android:fillColor="#E94560"
+            android:pathData="M27,18L27,36M18,27L36,27M20.636,20.636L33.364,33.364M20.636,33.364L33.364,20.636"
+            android:strokeWidth="2"
+            android:strokeColor="#E94560"/>
+    </group>
+</vector>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Picall</string>
+    <string name="app_tagline">专业图片编辑器</string>
+
+    <!-- 主导航 -->
+    <string name="tab_color_formula">色彩配方</string>
+    <string name="tab_lut">LUT</string>
+    <string name="tab_watermark">水印相框</string>
+    <string name="tab_presets">预设</string>
+
+    <!-- 色彩配方 - 分组 -->
+    <string name="group_palette">调色盘</string>
+    <string name="group_brightness">亮度</string>
+    <string name="group_curves">WRGB曲线</string>
+    <string name="group_color">颜色</string>
+    <string name="group_rgb">RGB原色</string>
+    <string name="group_lch">LCH颜色</string>
+    <string name="group_effects">效果</string>
+
+    <!-- 亮度调节 -->
+    <string name="adjust_exposure">曝光</string>
+    <string name="adjust_contrast">对比度</string>
+    <string name="adjust_highlights">高光</string>
+    <string name="adjust_shadows">阴影</string>
+
+    <!-- 颜色调节 -->
+    <string name="adjust_saturation">饱和度</string>
+    <string name="adjust_temperature">色温</string>
+    <string name="adjust_tint">色调</string>
+    <string name="adjust_color_effect">色彩效果</string>
+
+    <!-- RGB调节 -->
+    <string name="adjust_red_hue">红色色相</string>
+    <string name="adjust_red_saturation">红色饱和度</string>
+    <string name="adjust_green_hue">绿色色相</string>
+    <string name="adjust_green_saturation">绿色饱和度</string>
+    <string name="adjust_blue_hue">蓝色色相</string>
+    <string name="adjust_blue_saturation">蓝色饱和度</string>
+
+    <!-- LCH调节 -->
+    <string name="adjust_lch_lightness">明度</string>
+    <string name="adjust_lch_chroma">彩度</string>
+    <string name="adjust_lch_hue">色相</string>
+
+    <!-- 效果 -->
+    <string name="effect_fade">褪色</string>
+    <string name="effect_silver_retention">留银冲洗</string>
+
+    <!-- LUT -->
+    <string name="lut_import">导入LUT</string>
+    <string name="lut_intensity">LUT强度</string>
+    <string name="lut_supported_formats">支持 .cube / .3dl 格式</string>
+
+    <!-- 水印相框 -->
+    <string name="watermark_text">自定义文字</string>
+    <string name="watermark_font_size">字体大小</string>
+    <string name="watermark_position">位置</string>
+    <string name="watermark_frame_style">相框样式</string>
+    <string name="watermark_exif">照片参数</string>
+
+    <!-- 通用 -->
+    <string name="save_preset">保存预设</string>
+    <string name="load_preset">加载预设</string>
+    <string name="reset_all">重置全部</string>
+    <string name="intensity">强度</string>
+    <string name="apply">应用</string>
+    <string name="cancel">取消</string>
+    <string name="export_image">导出图片</string>
+    <string name="select_image">选择图片</string>
+    <string name="take_photo">拍照</string>
+</resources>
