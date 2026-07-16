@@ -11,19 +11,36 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.picall.app.data.local.PresetDatabase
 import com.picall.app.data.model.Preset
 import com.picall.app.data.model.PresetType
+import com.picall.app.data.repository.PresetRepository
+import com.picall.app.ui.components.PresetCard
 import com.picall.app.ui.theme.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PresetsScreen(
     onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var selectedType by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
     var searchQuery by remember { mutableStateOf("") }
+
+    val db = remember { PresetDatabase.getInstance(context) }
+    val repo = remember { PresetRepository(db) }
+
+    val allPresets by repo.getAllPresets().collectAsState(initial = emptyList())
+
+    val filteredPresets = remember(allPresets, selectedType, searchQuery) {
+        allPresets.filter { it.type == selectedType }
+            .filter { searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true) }
+    }
 
     Scaffold(
         topBar = {
@@ -82,36 +99,48 @@ fun PresetsScreen(
             }
 
             // 预设列表
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                // TODO: 从 ViewModel 加载预设数据
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Outlined.Bookmarks,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                            )
-                            Text(
-                                "预设功能已就绪",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "在编辑器中保存的预设将显示在这里",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
+            if (filteredPresets.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Outlined.Bookmarks,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        )
+                        Text(
+                            "暂无保存的预设",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "在编辑器中保存的预设将显示在这里",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(filteredPresets, key = { it.id }) { preset ->
+                        PresetCard(
+                            preset = preset,
+                            onClick = {},
+                            onDelete = {
+                                scope.launch { repo.deletePreset(preset.id) }
+                            },
+                            onToggleFavorite = {
+                                scope.launch { repo.toggleFavorite(preset.id, !preset.isFavorite) }
+                            }
+                        )
                     }
                 }
             }

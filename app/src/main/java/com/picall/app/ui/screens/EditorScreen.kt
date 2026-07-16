@@ -2,6 +2,7 @@ package com.picall.app.ui.screens
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.picall.app.data.local.PresetDatabase
 import com.picall.app.data.model.*
 import com.picall.app.data.repository.PresetRepository
@@ -39,6 +41,8 @@ import com.picall.app.ui.components.*
 import com.picall.app.ui.theme.*
 import com.picall.app.viewmodel.EditorTab
 import com.picall.app.viewmodel.EditorViewModel
+import com.picall.app.viewmodel.EditorViewModelFactory
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,14 +51,20 @@ fun EditorScreen(
     onNavigateToSettings: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    // 初始化 ViewModel（单例）
-    val vm = remember {
-        val db = PresetDatabase.getInstance(context)
-        val repo = PresetRepository(db)
-        EditorViewModel(repo)
-    }
+    val db = remember { PresetDatabase.getInstance(context) }
+    val repo = remember { PresetRepository(db) }
+    val vm: EditorViewModel = viewModel(factory = EditorViewModelFactory(repo))
     val editorState by vm.state.collectAsState()
+
+    val colorFormulaPresets by vm.colorFormulaPresets.collectAsState()
+    val lutPresets by vm.lutPresets.collectAsState()
+    val watermarkPresets by vm.watermarkPresets.collectAsState()
+
+    // 保存预设对话框
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var presetName by remember { mutableStateOf("") }
 
     // 图片选择器
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -66,10 +76,52 @@ fun EditorScreen(
                     val bitmap = BitmapFactory.decodeStream(stream)
                     if (bitmap != null) {
                         vm.loadImage(bitmap, it)
-                    }
-                }
-            } catch (_: Exception) {}
+            }
         }
+    }
+
+    // 保存预设对话框
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = { Text("保存预设") },
+            text = {
+                OutlinedTextField(
+                    value = presetName,
+                    onValueChange = { presetName = it },
+                    label = { Text("预设名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (presetName.isNotBlank()) {
+                            when (editorState.activeTab) {
+                                EditorTab.COLOR_FORMULA -> vm.saveColorFormulaPreset(presetName)
+                                EditorTab.LUT -> vm.saveLutPreset(presetName)
+                                EditorTab.WATERMARK -> vm.saveWatermarkPreset(presetName)
+                                else -> {}
+                            }
+                            presetName = ""
+                            showSaveDialog = false
+                            Toast.makeText(context, "预设已保存", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SliderActive)
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveDialog = false; presetName = "" }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+}
     }
 
     // LUT 文件选择器
@@ -123,9 +175,11 @@ fun EditorScreen(
                 activeTab = editorState.activeTab,
                 onTabSelected = { vm.setActiveTab(it) },
                 onExport = {
-                    vm.exportImage()?.let { bitmap ->
-                        // TODO: 保存到相册/分享
-                        saveBitmapToGallery(context, bitmap)
+                    scope.launch {
+                        vm.exportImageAsync()?.let { bitmap ->
+                            saveBitmapToGallery(context, bitmap)
+                            Toast.makeText(context, "已保存到相册", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 },
                 isExporting = editorState.isExporting
@@ -164,20 +218,66 @@ fun EditorScreen(
                     EditorTab.LUT -> LutPanel(
                         lutPreset = editorState.lutPreset,
                         onImportLut = { lutPickerLauncher.launch("*/*") },
-                        onIntensityChange = { vm.setLutIntensity(it) }
+                        onIntensityChange = { vm.setLutIntensity(it) },
+                        onSavePreset = { showSaveDialog = true }
                     )
                     EditorTab.WATERMARK -> WatermarkPanel(
                         watermark = editorState.watermarkPreset,
-                        onUpdate = { vm.updateWatermark(it) }
+                        onUpdate = { vm.updateWatermark(it) },
+                        onSavePreset = { showSaveDialog = true }
                     )
                     EditorTab.PRESETS -> PresetsPanel(
-                        colorFormulas = emptyList(), // 从 ViewModel 获取
-                        lutPresets = emptyList(),
-                        watermarkPresets = emptyList()
+                        colorFormulas = colorFormulaPresets,
+                        lutPresets = lutPresets,
+                        watermarkPresets = watermarkPresets,
+                        onLoadPreset = { vm.loadPreset(it) },
+                        onDeletePreset = { vm.deletePreset(it) }
                     )
                 }
             }
         }
+    }
+
+    // 保存预设对话框
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = { Text("保存预设") },
+            text = {
+                OutlinedTextField(
+                    value = presetName,
+                    onValueChange = { presetName = it },
+                    label = { Text("预设名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (presetName.isNotBlank()) {
+                            when (editorState.activeTab) {
+                                EditorTab.COLOR_FORMULA -> vm.saveColorFormulaPreset(presetName)
+                                EditorTab.LUT -> vm.saveLutPreset(presetName)
+                                EditorTab.WATERMARK -> vm.saveWatermarkPreset(presetName)
+                                else -> {}
+                            }
+                            presetName = ""
+                            showSaveDialog = false
+                            Toast.makeText(context, "预设已保存", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SliderActive)
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveDialog = false; presetName = "" }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -610,7 +710,7 @@ private fun ColorFormulaPanel(
             }
 
             Button(
-                onClick = { /* TODO: 保存为预设对话框 */ },
+                onClick = { showSaveDialog = true },
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SliderActive)
             ) {
@@ -630,7 +730,8 @@ private fun ColorFormulaPanel(
 private fun LutPanel(
     lutPreset: LutPreset,
     onImportLut: () -> Unit,
-    onIntensityChange: (Float) -> Unit
+    onIntensityChange: (Float) -> Unit,
+    onSavePreset: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -732,7 +833,8 @@ private fun LutPanel(
 @Composable
 private fun WatermarkPanel(
     watermark: WatermarkPreset,
-    onUpdate: (WatermarkPreset.() -> WatermarkPreset) -> Unit
+    onUpdate: (WatermarkPreset.() -> WatermarkPreset) -> Unit,
+    onSavePreset: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -922,12 +1024,25 @@ private fun WatermarkPanel(
                                 label = { Text(label, fontSize = 10.sp) },
                                 modifier = Modifier.weight(1f).height(28.dp)
                             )
-                        }
                     }
                 }
             }
+
+            // 保存预设按钮
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onSavePreset,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SliderActive),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("保存为预设")
+            }
         }
     }
+}
 }
 
 // ═══════════════════════════════════════════
@@ -938,7 +1053,9 @@ private fun WatermarkPanel(
 private fun PresetsPanel(
     colorFormulas: List<Preset>,
     lutPresets: List<Preset>,
-    watermarkPresets: List<Preset>
+    watermarkPresets: List<Preset>,
+    onLoadPreset: (Preset) -> Unit = {},
+    onDeletePreset: (Long) -> Unit = {}
 ) {
     var selectedType by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
 
@@ -997,8 +1114,8 @@ private fun PresetsPanel(
             presets.forEach { preset ->
                 PresetCard(
                     preset = preset,
-                    onClick = { /* TODO: 加载预设 */ },
-                    onDelete = { /* TODO: 删除预设 */ }
+                    onClick = { onLoadPreset(preset) },
+                    onDelete = { onDeletePreset(preset.id) }
                 )
             }
         }

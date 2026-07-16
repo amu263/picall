@@ -65,18 +65,37 @@ class FilterPipeline {
      */
     fun processPreview(input: Bitmap, globalIntensity: Float = 1f, maxDimension: Int = 1024): Bitmap {
         val scale = calculateScale(input.width, input.height, maxDimension)
-        val scaled = if (scale < 1f) {
-            Bitmap.createScaledBitmap(
+        if (scale < 1f) {
+            val scaled = Bitmap.createScaledBitmap(
                 input,
                 (input.width * scale).toInt(),
                 (input.height * scale).toInt(),
                 true
             )
-        } else {
-            input.copy(Bitmap.Config.ARGB_8888, true)
+            return processDirect(scaled, globalIntensity)
+        }
+        return process(input, globalIntensity)
+    }
+
+    /**
+     * 处理已缩放的bitmap (不额外复制)
+     */
+    private fun processDirect(input: Bitmap, globalIntensity: Float): Bitmap {
+        var current = input
+        val globalFactor = globalIntensity.coerceIn(0f, 1f)
+
+        for (stage in filters) {
+            val effectiveIntensity = stage.intensity * globalFactor
+            if (effectiveIntensity > 0.001f) {
+                val next = stage.filter.apply(current, effectiveIntensity)
+                if (next !== current) {
+                    current.recycle()
+                    current = next
+                }
+            }
         }
 
-        return process(scaled, globalIntensity)
+        return current
     }
 
     private fun calculateScale(width: Int, height: Int, maxDim: Int): Float {

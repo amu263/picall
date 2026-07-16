@@ -20,12 +20,28 @@ class ImageProcessor {
     private val pipeline = FilterPipeline()
 
     /**
-     * 应用色彩配方
+     * 应用色彩配方 - 全分辨率
      */
     fun applyColorFormula(input: Bitmap, formula: ColorFormula): Bitmap {
         pipeline.clear()
+        buildStages(formula)
+        return pipeline.process(input, formula.globalIntensity)
+    }
 
-        // ── 亮度组 ──
+    /**
+     * 快速预览 — 使用低分辨率
+     */
+    fun applyColorFormulaPreview(
+        input: Bitmap,
+        formula: ColorFormula,
+        maxDimension: Int = 1024
+    ): Bitmap {
+        pipeline.clear()
+        buildStages(formula)
+        return pipeline.processPreview(input, formula.globalIntensity, maxDimension)
+    }
+
+    private fun buildStages(formula: ColorFormula) {
         if (hasAdjustment(formula.exposure) || hasAdjustment(formula.contrast) ||
             hasAdjustment(formula.highlights) || hasAdjustment(formula.shadows)
         ) {
@@ -40,7 +56,6 @@ class ImageProcessor {
             )
         }
 
-        // ── WRGB 曲线 ──
         val hasCurves = formula.curvePointsW.any { it.x != it.y } ||
                 formula.curvePointsR.any { it.x != it.y } ||
                 formula.curvePointsG.any { it.x != it.y } ||
@@ -57,7 +72,6 @@ class ImageProcessor {
             )
         }
 
-        // ── 颜色组 ──
         if (hasAdjustment(formula.saturation) || hasAdjustment(formula.colorTemperature) ||
             hasAdjustment(formula.tint)
         ) {
@@ -71,7 +85,6 @@ class ImageProcessor {
             )
         }
 
-        // ── RGB 原色调节 ──
         if (hasAdjustment(formula.redHue) || hasAdjustment(formula.redSaturation) ||
             hasAdjustment(formula.greenHue) || hasAdjustment(formula.greenSaturation) ||
             hasAdjustment(formula.blueHue) || hasAdjustment(formula.blueSaturation)
@@ -89,7 +102,6 @@ class ImageProcessor {
             )
         }
 
-        // ── LCH 颜色调节 ──
         if (hasAdjustment(formula.lchLightness) || hasAdjustment(formula.lchChroma) ||
             hasAdjustment(formula.lchHue)
         ) {
@@ -103,7 +115,6 @@ class ImageProcessor {
             )
         }
 
-        // ── 效果 ──
         if (formula.fade > 0.001f || formula.silverRetention > 0.001f) {
             pipeline.addStage(
                 EffectsFilter(
@@ -113,24 +124,6 @@ class ImageProcessor {
                 formula.effectsIntensity
             )
         }
-
-        return pipeline.process(input, formula.globalIntensity)
-    }
-
-    /**
-     * 快速预览 — 使用低分辨率
-     */
-    fun applyColorFormulaPreview(
-        input: Bitmap,
-        formula: ColorFormula,
-        maxDimension: Int = 1024
-    ): Bitmap {
-        pipeline.clear()
-
-        // 相同的管线构建...(简化：重用 applyColorFormula 的逻辑但用低分辨率)
-        // 这里直接构建相同的管线
-        applyColorFormula(input, formula)  // 实际应用中应该用低分辨率版本
-        return pipeline.processPreview(input, formula.globalIntensity, maxDimension)
     }
 
     /**

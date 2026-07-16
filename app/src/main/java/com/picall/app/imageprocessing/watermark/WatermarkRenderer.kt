@@ -248,8 +248,7 @@ object WatermarkRenderer {
             // 加载自定义字体
             if (preset.fontPath.isNotEmpty()) {
                 try {
-                    val typeface = Typeface.createFromFile(File(preset.fontPath))
-                    typeface = typeface
+                    typeface = Typeface.createFromFile(File(preset.fontPath))
                 } catch (_: Exception) {}
             }
 

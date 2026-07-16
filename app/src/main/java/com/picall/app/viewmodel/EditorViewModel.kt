@@ -3,6 +3,7 @@ package com.picall.app.viewmodel
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.picall.app.data.model.*
 import com.picall.app.data.repository.PresetRepository
@@ -356,10 +357,7 @@ class EditorViewModel(
 
         viewModelScope.launch(Dispatchers.Default) {
             try {
-                var result = original.copy(Bitmap.Config.ARGB_8888, true)
-
-                // 1. 应用色彩配方
-                result = imageProcessor.applyColorFormulaPreview(result, state.colorFormula)
+                var result = imageProcessor.applyColorFormulaPreview(original, state.colorFormula)
 
                 // 2. 应用 LUT
                 if (state.lutPreset.lutData.isNotEmpty()) {
@@ -386,7 +384,31 @@ class EditorViewModel(
     }
 
     /**
-     * 最终导出 — 全分辨率处理
+     * 最终导出 — 全分辨率处理 (异步)
+     */
+    suspend fun exportImageAsync(): Bitmap? {
+        val state = _state.value
+        val original = state.originalBitmap ?: return null
+
+        _state.update { it.copy(isExporting = true) }
+
+        return try {
+            withContext(Dispatchers.Default) {
+                var result = original.copy(Bitmap.Config.ARGB_8888, true)
+                result = imageProcessor.applyColorFormula(result, state.colorFormula)
+                if (state.lutPreset.lutData.isNotEmpty()) {
+                    result = imageProcessor.applyLut(result, state.lutPreset)
+                }
+                result = imageProcessor.applyWatermark(result, state.watermarkPreset)
+                result
+            }
+        } finally {
+            _state.update { it.copy(isExporting = false) }
+        }
+    }
+
+    /**
+     * 同步导出 (兼容旧接口)
      */
     fun exportImage(): Bitmap? {
         val state = _state.value
@@ -411,5 +433,17 @@ class EditorViewModel(
         super.onCleared()
         _state.value.originalBitmap?.recycle()
         _state.value.previewBitmap?.recycle()
+    }
+}
+
+class EditorViewModelFactory(
+    private val repository: PresetRepository
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(EditorViewModel::class.java)) {
+            return EditorViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
