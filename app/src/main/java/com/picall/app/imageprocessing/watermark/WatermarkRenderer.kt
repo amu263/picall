@@ -16,27 +16,32 @@ object WatermarkRenderer {
         val pad = maxOf((w * 0.04f).toInt(), 12)
         val radius = (minOf(w, h) * 0.02f).toInt().coerceIn(8, 40)
 
-        val (canvasW, canvasH, imgX, imgY) = when (preset.frameStyle) {
+        val canvasW: Int; val canvasH: Int; val imgX: Int; val imgY: Int
+        when (preset.frameStyle) {
             FrameStyle.CLASSIC_MATTE -> {
                 val bgPad = maxOf((maxOf(w, h) * 0.06f).toInt(), 24)
                 val bottomBar = if (preset.showExif || preset.textContent.isNotEmpty()) (h * 0.06f).toInt().coerceIn(40, 80) else 0
-                Triple(w + bgPad * 2, h + bgPad * 2 + bottomBar, bgPad, bgPad)
+                canvasW = w + bgPad * 2; canvasH = h + bgPad * 2 + bottomBar; imgX = bgPad; imgY = bgPad
             }
             FrameStyle.MINIMAL_LINE -> {
                 val p = maxOf((minOf(w, h) * 0.03f).toInt(), 10)
-                Triple(w + p * 2, h + p * 2, p, p)
+                canvasW = w + p * 2; canvasH = h + p * 2; imgX = p; imgY = p
             }
-            FrameStyle.VIGNETTE -> Triple(w, h, 0, 0)
+            FrameStyle.VIGNETTE -> {
+                canvasW = w; canvasH = h; imgX = 0; imgY = 0
+            }
             FrameStyle.DOUBLE_PRESERVE -> {
                 val p = maxOf((maxOf(w, h) * 0.08f).toInt(), 32)
-                Triple(w + p * 2, h + p * 2, p, p)
+                canvasW = w + p * 2; canvasH = h + p * 2; imgX = p; imgY = p
             }
             FrameStyle.PHOTO_PAPER -> {
                 val side = maxOf((w * 0.05f).toInt(), 16)
                 val bottom = maxOf((h * 0.12f).toInt(), 60)
-                Triple(w + side * 2, h + side + bottom, side, side)
+                canvasW = w + side * 2; canvasH = h + side + bottom; imgX = side; imgY = side
             }
-            FrameStyle.NONE -> Triple(w, h, 0, 0)
+            FrameStyle.NONE -> {
+                canvasW = w; canvasH = h; imgX = 0; imgY = 0
+            }
         }
 
         val output = Bitmap.createBitmap(canvasW, canvasH, Bitmap.Config.ARGB_8888)
