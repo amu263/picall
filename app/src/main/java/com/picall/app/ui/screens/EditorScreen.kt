@@ -223,7 +223,7 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("强度", style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(40.dp))
-                        Slider(lut.intensity, { vm.setLutIntensity(it) }, 0f..1f, Modifier.weight(1f).height(20.dp),
+                        Slider(lut.intensity, { vm.setLutIntensity(it) }, valueRange = 0f..1f, modifier = Modifier.weight(1f).height(20.dp),
                             colors = SliderDefaults.colors(thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack))
                         Text("${(lut.intensity * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(36.dp))
                     }
