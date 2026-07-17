@@ -3,10 +3,6 @@ name: Picall Android CI/CD
 on:
   push:
     branches: [ main, master ]
-    paths-ignore:
-      - '**.md'
-      - '.gitignore'
-      - 'LICENSE'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -17,6 +13,7 @@ concurrency:
 
 env:
   JAVA_VERSION: '17'
+  GRADLE_VERSION: '8.9'
 
 jobs:
   build:
@@ -33,14 +30,13 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
