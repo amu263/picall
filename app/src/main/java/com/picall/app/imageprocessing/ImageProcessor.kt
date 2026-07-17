@@ -7,7 +7,6 @@ import com.picall.app.data.model.LutPreset
 import com.picall.app.data.model.WatermarkPreset
 import com.picall.app.imageprocessing.filters.*
 import com.picall.app.imageprocessing.lut.LutApplier
-import com.picall.app.imageprocessing.watermark.WatermarkRenderer
 
 class ImageProcessor {
 
@@ -15,7 +14,6 @@ class ImageProcessor {
         original: Bitmap,
         formula: ColorFormula,
         lut: LutPreset,
-        watermark: WatermarkPreset,
         sourceUri: Uri? = null,
         maxDim: Int = 640
     ): Bitmap {
@@ -38,8 +36,6 @@ class ImageProcessor {
             result = LutApplier.applyLut(result, lut.lutData, lut.lutSize, lut.intensity)
         }
 
-        result = WatermarkRenderer.render(result, watermark, sourceUri?.path ?: sourceUri?.toString())
-
         return result
     }
 
@@ -47,7 +43,6 @@ class ImageProcessor {
         original: Bitmap,
         formula: ColorFormula,
         lut: LutPreset,
-        watermark: WatermarkPreset,
         sourceUri: Uri? = null
     ): Bitmap {
         var result = original.copy(Bitmap.Config.ARGB_8888, true)
@@ -59,8 +54,6 @@ class ImageProcessor {
         if (lut.lutData.isNotEmpty() && lut.intensity > 0.001f) {
             result = LutApplier.applyLut(result, lut.lutData, lut.lutSize, lut.intensity)
         }
-
-        result = WatermarkRenderer.render(result, watermark, sourceUri?.path ?: sourceUri?.toString())
 
         return result
     }

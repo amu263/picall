@@ -7,11 +7,8 @@ import com.google.gson.annotations.SerializedName
  * 水印相框预设 — 自定义水印和相框的所有参数
  */
 data class WatermarkPreset(
-    // ── 相框样式 ──
-    @SerializedName("frame_style") val frameStyle: FrameStyle = FrameStyle.CLASSIC_MATTE,
-
-    // ── EXIF 参数显示 ──
-    @SerializedName("show_exif") val showExif: Boolean = true,
+    @SerializedName("frame_style") val frameStyle: FrameStyle = FrameStyle.NONE,
+    @SerializedName("show_exif") val showExif: Boolean = false,
     @SerializedName("show_device") val showDevice: Boolean = true,
     @SerializedName("show_params") val showParams: Boolean = true,
     @SerializedName("show_datetime") val showDateTime: Boolean = true,
