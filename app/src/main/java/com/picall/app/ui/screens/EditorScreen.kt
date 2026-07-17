@@ -1,4 +1,4 @@
-﻿package com.picall.app.ui.screens
+package com.picall.app.ui.screens
 
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -91,13 +91,13 @@ fun EditorScreen(
                 title = { Text("Picall", fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(onClick = { vm.undo() }, enabled = s.canUndo) {
-                        Icon(Icons.Default.Undo, "鎾ら攢")
+                        Icon(Icons.Default.Undo, "撤销")
                     }
                     IconButton(onClick = onNavigateToPresets) {
-                        Icon(Icons.Outlined.Bookmarks, "棰勮绠＄悊")
+                        Icon(Icons.Outlined.Bookmarks, "预设管理")
                     }
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Outlined.Settings, "璁剧疆")
+                        Icon(Icons.Outlined.Settings, "设置")
                     }
                 }
             )
@@ -109,25 +109,25 @@ fun EditorScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TabBtn("鑹插僵閰嶆柟", Icons.Outlined.ColorLens, Icons.Default.ColorLens,
+                    TabBtn("色彩配方", Icons.Outlined.ColorLens, Icons.Default.ColorLens,
                         s.activeTab == EditorTab.COLOR_FORMULA) { vm.setActiveTab(EditorTab.COLOR_FORMULA) }
                     TabBtn("LUT", Icons.Outlined.Gradient, Icons.Default.Gradient,
                         s.activeTab == EditorTab.LUT) { vm.setActiveTab(EditorTab.LUT) }
-                    TabBtn("棰勮", Icons.Outlined.Bookmarks, Icons.Default.Bookmarks,
+                    TabBtn("预设", Icons.Outlined.Bookmarks, Icons.Default.Bookmarks,
                         s.activeTab == EditorTab.PRESETS) { vm.setActiveTab(EditorTab.PRESETS) }
 
                     FilledIconButton(onClick = {
                         scope.launch {
                             vm.exportAsync()?.let { bmp ->
                                 saveToGallery(ctx, bmp)
-                                Toast.makeText(ctx, "宸蹭繚瀛樺埌鐩稿唽", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(ctx, "已保存到相册", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }, enabled = !s.isExporting,
                         colors = IconButtonDefaults.filledIconButtonColors(containerColor = SliderActive)
                     ) {
                         if (s.isExporting) CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                        else Icon(Icons.Default.SaveAlt, "瀵煎嚭", Modifier.size(20.dp))
+                        else Icon(Icons.Default.SaveAlt, "导出", Modifier.size(20.dp))
                     }
                 }
             }
@@ -151,34 +151,36 @@ fun EditorScreen(
     if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = { showSaveDialog = false; presetName = "" },
-            title = { Text("淇濆瓨棰勮") },
+            title = { Text("保存预设") },
             text = {
-                OutlinedTextField(presetName, { presetName = it }, label = { Text("棰勮鍚嶇О") },
+                OutlinedTextField(presetName, { presetName = it }, label = { Text("预设名称") },
                     singleLine = true, modifier = Modifier.fillMaxWidth())
             },
             confirmButton = {
                 Button(onClick = {
                     if (presetName.isNotBlank()) {
-                            when (s.activeTab) {
-                                EditorTab.COLOR_FORMULA -> vm.saveColorPreset(presetName)
-                                EditorTab.LUT -> vm.saveLutPreset(presetName)
-                                else -> {}
+                        when (s.activeTab) {
+                            EditorTab.COLOR_FORMULA -> vm.saveColorPreset(presetName)
+                            EditorTab.LUT -> vm.saveLutPreset(presetName)
+                            EditorTab.WATERMARK -> vm.saveWatermarkPreset(presetName)
+                            else -> {}
                         }
                         presetName = ""; showSaveDialog = false
-                        Toast.makeText(ctx, "宸蹭繚瀛?, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, "已保存", Toast.LENGTH_SHORT).show()
                     }
                 }, colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
-                    Text("淇濆瓨")
+                    Text("保存")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSaveDialog = false; presetName = "" }) { Text("鍙栨秷") }
+                TextButton(onClick = { showSaveDialog = false; presetName = "" }) { Text("取消") }
             }
         )
     }
 }
 
-// 鈺愨晲鈺?Preview 鈺愨晲鈺?
+// ═══ Preview ═══
+
 @Composable
 private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean, modifier: Modifier = Modifier) {
     var scale by remember { mutableStateOf(1f) }
@@ -187,7 +189,7 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
     Column(modifier) {
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
             if (bitmap != null) {
-                Image(bitmap.asImageBitmap(), "棰勮", Modifier
+                Image(bitmap.asImageBitmap(), "预览", Modifier
                     .fillMaxSize()
                     .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
                     .pointerInput(Unit) {
@@ -207,14 +209,15 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
     }
 }
 
-// 鈺愨晲鈺?Color Formula Panel 鈺愨晲鈺?
+// ═══ Color Formula Panel ═══
+
 @Composable
 private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit, modifier: Modifier = Modifier) {
     val f = s.colorFormula
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
         // Global intensity
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("閰嶆柟鎬诲己搴?, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(80.dp))
+            Text("配方总强度", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(80.dp))
             Slider(f.globalIntensity, { vm.updateFormula { copy(globalIntensity = it) } },
                 valueRange = 0f..1f, modifier = Modifier.weight(1f).height(20.dp),
                 colors = SliderDefaults.colors(thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack))
@@ -223,49 +226,49 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
         Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
         // Brightness
-        FilterCategoryCard("浜害", s.expandedCategory == "brightness", { vm.toggleCategory("brightness") }, f.brightnessIntensity,
+        FilterCategoryCard("亮度", s.expandedCategory == "brightness", { vm.toggleCategory("brightness") }, f.brightnessIntensity,
             { vm.updateFormula { copy(brightnessIntensity = it) } }) {
-            AdjustmentSlider("鏇濆厜", f.exposure, { vm.updateFormula { copy(exposure = it) } })
-            AdjustmentSlider("瀵规瘮搴?, f.contrast, { vm.updateFormula { copy(contrast = it) } })
-            AdjustmentSlider("楂樺厜", f.highlights, { vm.updateFormula { copy(highlights = it) } })
-            AdjustmentSlider("闃村奖", f.shadows, { vm.updateFormula { copy(shadows = it) } })
+            AdjustmentSlider("曝光", f.exposure, { vm.updateFormula { copy(exposure = it) } })
+            AdjustmentSlider("对比度", f.contrast, { vm.updateFormula { copy(contrast = it) } })
+            AdjustmentSlider("高光", f.highlights, { vm.updateFormula { copy(highlights = it) } })
+            AdjustmentSlider("阴影", f.shadows, { vm.updateFormula { copy(shadows = it) } })
         }
 
         // Color
-        FilterCategoryCard("棰滆壊", s.expandedCategory == "color", { vm.toggleCategory("color") }, f.colorIntensity,
+        FilterCategoryCard("颜色", s.expandedCategory == "color", { vm.toggleCategory("color") }, f.colorIntensity,
             { vm.updateFormula { copy(colorIntensity = it) } }) {
-            AdjustmentSlider("楗卞拰搴?, f.saturation, { vm.updateFormula { copy(saturation = it) } })
-            BidirectionalSlider("鑹叉俯", f.colorTemperature, { vm.updateFormula { copy(colorTemperature = it) } }, negativeLabel = "鍐?, positiveLabel = "鏆?)
-            BidirectionalSlider("鑹茶皟", f.tint, { vm.updateFormula { copy(tint = it) } }, negativeLabel = "缁?, positiveLabel = "绱?)
+            AdjustmentSlider("饱和度", f.saturation, { vm.updateFormula { copy(saturation = it) } })
+            BidirectionalSlider("色温", f.colorTemperature, { vm.updateFormula { copy(colorTemperature = it) } }, negativeLabel = "冷", positiveLabel = "暖")
+            BidirectionalSlider("色调", f.tint, { vm.updateFormula { copy(tint = it) } }, negativeLabel = "绿", positiveLabel = "紫")
         }
 
         // RGB
-        FilterCategoryCard("RGB鍘熻壊", s.expandedCategory == "rgb", { vm.toggleCategory("rgb") }, f.rgbIntensity,
+        FilterCategoryCard("RGB原色", s.expandedCategory == "rgb", { vm.toggleCategory("rgb") }, f.rgbIntensity,
             { vm.updateFormula { copy(rgbIntensity = it) } }) {
-            Text("绾㈣壊閫氶亾", style = MaterialTheme.typography.labelMedium, color = Color(0xFFFF4757))
-            AdjustmentSlider("鑹茬浉", f.redHue, { vm.updateFormula { copy(redHue = it) } })
-            AdjustmentSlider("楗卞拰搴?, f.redSaturation, { vm.updateFormula { copy(redSaturation = it) } })
-            Text("缁胯壊閫氶亾", style = MaterialTheme.typography.labelMedium, color = Color(0xFF2ED573))
-            AdjustmentSlider("鑹茬浉", f.greenHue, { vm.updateFormula { copy(greenHue = it) } })
-            AdjustmentSlider("楗卞拰搴?, f.greenSaturation, { vm.updateFormula { copy(greenSaturation = it) } })
-            Text("钃濊壊閫氶亾", style = MaterialTheme.typography.labelMedium, color = Color(0xFF1E90FF))
-            AdjustmentSlider("鑹茬浉", f.blueHue, { vm.updateFormula { copy(blueHue = it) } })
-            AdjustmentSlider("楗卞拰搴?, f.blueSaturation, { vm.updateFormula { copy(blueSaturation = it) } })
+            Text("红色通道", style = MaterialTheme.typography.labelMedium, color = Color(0xFFFF4757))
+            AdjustmentSlider("色相", f.redHue, { vm.updateFormula { copy(redHue = it) } })
+            AdjustmentSlider("饱和度", f.redSaturation, { vm.updateFormula { copy(redSaturation = it) } })
+            Text("绿色通道", style = MaterialTheme.typography.labelMedium, color = Color(0xFF2ED573))
+            AdjustmentSlider("色相", f.greenHue, { vm.updateFormula { copy(greenHue = it) } })
+            AdjustmentSlider("饱和度", f.greenSaturation, { vm.updateFormula { copy(greenSaturation = it) } })
+            Text("蓝色通道", style = MaterialTheme.typography.labelMedium, color = Color(0xFF1E90FF))
+            AdjustmentSlider("色相", f.blueHue, { vm.updateFormula { copy(blueHue = it) } })
+            AdjustmentSlider("饱和度", f.blueSaturation, { vm.updateFormula { copy(blueSaturation = it) } })
         }
 
         // LCH
-        FilterCategoryCard("LCH棰滆壊", s.expandedCategory == "lch", { vm.toggleCategory("lch") }, f.lchIntensity,
+        FilterCategoryCard("LCH颜色", s.expandedCategory == "lch", { vm.toggleCategory("lch") }, f.lchIntensity,
             { vm.updateFormula { copy(lchIntensity = it) } }) {
-            AdjustmentSlider("鏄庡害 L", f.lchLightness, { vm.updateFormula { copy(lchLightness = it) } })
-            AdjustmentSlider("褰╁害 C", f.lchChroma, { vm.updateFormula { copy(lchChroma = it) } })
-            AdjustmentSlider("鑹茬浉 H", f.lchHue, { vm.updateFormula { copy(lchHue = it) } }, displayValue = "${(f.lchHue * 180).toInt()}掳")
+            AdjustmentSlider("明度 L", f.lchLightness, { vm.updateFormula { copy(lchLightness = it) } })
+            AdjustmentSlider("彩度 C", f.lchChroma, { vm.updateFormula { copy(lchChroma = it) } })
+            AdjustmentSlider("色相 H", f.lchHue, { vm.updateFormula { copy(lchHue = it) } }, displayValue = "${(f.lchHue * 180).toInt()}°")
         }
 
         // Effects
-        FilterCategoryCard("鏁堟灉", s.expandedCategory == "effects", { vm.toggleCategory("effects") }, f.effectsIntensity,
+        FilterCategoryCard("效果", s.expandedCategory == "effects", { vm.toggleCategory("effects") }, f.effectsIntensity,
             { vm.updateFormula { copy(effectsIntensity = it) } }) {
-            AdjustmentSlider("瑜壊", f.fade, { vm.updateFormula { copy(fade = it) } }, valueRange = 0f..1f, displayValue = "${(f.fade * 100).toInt()}%")
-            AdjustmentSlider("鐣欓摱鍐叉礂", f.silverRetention, { vm.updateFormula { copy(silverRetention = it) } }, valueRange = 0f..1f, displayValue = "${(f.silverRetention * 100).toInt()}%")
+            AdjustmentSlider("褪色", f.fade, { vm.updateFormula { copy(fade = it) } }, valueRange = 0f..1f, displayValue = "${(f.fade * 100).toInt()}%")
+            AdjustmentSlider("留银冲洗", f.silverRetention, { vm.updateFormula { copy(silverRetention = it) } }, valueRange = 0f..1f, displayValue = "${(f.silverRetention * 100).toInt()}%")
         }
 
         // Buttons
@@ -273,19 +276,20 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
             OutlinedButton({ vm.resetFormula() }, shape = RoundedCornerShape(10.dp)) {
                 Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("閲嶇疆")
+                Text("重置")
             }
                 Button(onSavePreset, shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
                 Icon(Icons.Default.Save, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("淇濆瓨棰勮")
+                Text("保存预设")
             }
         }
     }
 }
 
-// 鈺愨晲鈺?LUT Tab 鈺愨晲鈺?
+// ═══ LUT Tab ═══
+
 @Composable
 private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, onSavePreset: () -> Unit, modifier: Modifier = Modifier) {
     val lut = s.lutPreset
@@ -296,14 +300,14 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, on
                     Icon(Icons.Outlined.Gradient, null, Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
                     Spacer(Modifier.height(16.dp))
-                    Text("瀵煎叆 LUT 鏂囦欢", style = MaterialTheme.typography.titleMedium)
-                    Text("鏀寔 .cube / .3dl 鏍煎紡", style = MaterialTheme.typography.bodySmall,
+                    Text("导入 LUT 文件", style = MaterialTheme.typography.titleMedium)
+                    Text("支持 .cube / .3dl 格式", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
                     Button(onImport, shape = RoundedCornerShape(12.dp)) {
                         Icon(Icons.Default.FileOpen, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("瀵煎叆 LUT")
+                        Text("导入 LUT")
                     }
                 }
             }
@@ -317,12 +321,12 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, on
                         Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text("寮哄害 ${(lut.intensity * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                    Text("强度 ${(lut.intensity * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
                     Slider(lut.intensity, { vm.setLutIntensity(it) }, valueRange = 0f..1f, modifier = Modifier.height(24.dp),
                         colors = SliderDefaults.colors(thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack))
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton({ vm.removeLut() }, Modifier.fillMaxWidth()) {
-                        Text("绉婚櫎 LUT")
+                        Text("移除 LUT")
                     }
                 }
             }
@@ -331,36 +335,36 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, on
                 shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
                 Icon(Icons.Default.Save, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("淇濆瓨涓洪璁?)
+                Text("保存为预设")
             }
         }
     }
 }
 
-// 鈺愨晲鈺?Watermark Tab 鈺愨晲鈺?
-@Composable
+// ═══ Presets Tab ═══
+
 @Composable
 private fun PresetsTab(vm: EditorViewModel, modifier: Modifier = Modifier) {
     val colorP by vm.colorFormulaPresets.collectAsState()
     val lutP by vm.lutPresets.collectAsState()
-// ═══ Presets Tab ═══
+    val wmP by vm.watermarkPresets.collectAsState()
     var type by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
 
     Column(modifier) {
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(type == PresetType.COLOR_FORMULA, { type = PresetType.COLOR_FORMULA },
-                label = { Text("鑹插僵", fontSize = 12.sp) }, modifier = Modifier.weight(1f))
+                label = { Text("色彩", fontSize = 12.sp) }, modifier = Modifier.weight(1f))
             FilterChip(type == PresetType.LUT, { type = PresetType.LUT },
                 label = { Text("LUT", fontSize = 12.sp) }, modifier = Modifier.weight(1f))
         }
         val list = when (type) {
             PresetType.COLOR_FORMULA -> colorP
             PresetType.LUT -> lutP
-            else -> emptyList()
+            PresetType.WATERMARK -> wmP
         }
         if (list.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("鏆傛棤棰勮", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("暂无预设", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -372,7 +376,8 @@ private fun PresetsTab(vm: EditorViewModel, modifier: Modifier = Modifier) {
     }
 }
 
-// 鈺愨晲鈺?Helpers 鈺愨晲鈺?
+// ═══ Helpers ═══
+
 @Composable
 private fun TabBtn(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector,
                    selIcon: androidx.compose.ui.graphics.vector.ImageVector, sel: Boolean, onClick: () -> Unit) {
@@ -390,32 +395,32 @@ private fun EmptyState(onPick: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(Icons.Outlined.Image, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
         Spacer(Modifier.height(24.dp))
-        Text("閫夋嫨涓€寮犵収鐗囧紑濮嬬紪杈?, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text("选择一张照片开始编辑", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
-        Text("鑹插僵閰嶆柟 路 LUT瀵煎叆 路 姘村嵃鐩告", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+        Text("色彩配方 · LUT导入", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
         Spacer(Modifier.height(32.dp))
         Button(onPick, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
             Icon(Icons.Default.PhotoLibrary, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("閫夋嫨鍥剧墖")
+            Text("选择图片")
         }
     }
 }
 
 private fun posSymbol(pos: WatermarkPosition) = when (pos) {
-    WatermarkPosition.TOP_LEFT -> "鈫?; WatermarkPosition.TOP_CENTER -> "鈫?; WatermarkPosition.TOP_RIGHT -> "鈫?
-    WatermarkPosition.CENTER_LEFT -> "鈫?; WatermarkPosition.CENTER -> "路"; WatermarkPosition.CENTER_RIGHT -> "鈫?
-    WatermarkPosition.BOTTOM_LEFT -> "鈫?; WatermarkPosition.BOTTOM_CENTER -> "鈫?; WatermarkPosition.BOTTOM_RIGHT -> "鈫?
-    else -> "路"
+    WatermarkPosition.TOP_LEFT -> "↖"; WatermarkPosition.TOP_CENTER -> "↑"; WatermarkPosition.TOP_RIGHT -> "↗"
+    WatermarkPosition.CENTER_LEFT -> "←"; WatermarkPosition.CENTER -> "·"; WatermarkPosition.CENTER_RIGHT -> "→"
+    WatermarkPosition.BOTTOM_LEFT -> "↙"; WatermarkPosition.BOTTOM_CENTER -> "↓"; WatermarkPosition.BOTTOM_RIGHT -> "↘"
+    else -> "·"
 }
 
 private fun frameLabel(s: FrameStyle) = when (s) {
-    FrameStyle.NONE -> "鏃?
-    FrameStyle.CLASSIC_MATTE -> "缁忓吀鐣欑櫧"
-    FrameStyle.MINIMAL_LINE -> "鏋佺畝绾挎"
-    FrameStyle.VIGNETTE -> "鏆楄鍏夊奖"
-    FrameStyle.DOUBLE_PRESERVE -> "鍙屾鐝嶈棌"
-    FrameStyle.PHOTO_PAPER -> "鐩哥焊鍗拌"
+    FrameStyle.NONE -> "无"
+    FrameStyle.CLASSIC_MATTE -> "经典留白"
+    FrameStyle.MINIMAL_LINE -> "极简线框"
+    FrameStyle.VIGNETTE -> "暗角光影"
+    FrameStyle.DOUBLE_PRESERVE -> "双框珍藏"
+    FrameStyle.PHOTO_PAPER -> "相纸印记"
 }
 
 private fun saveToGallery(ctx: android.content.Context, bitmap: android.graphics.Bitmap) {
@@ -430,4 +435,3 @@ private fun saveToGallery(ctx: android.content.Context, bitmap: android.graphics
         }
     } catch (_: Exception) {}
 }
-
