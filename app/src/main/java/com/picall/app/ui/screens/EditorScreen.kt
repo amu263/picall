@@ -139,9 +139,9 @@ fun EditorScreen(
                 PreviewArea(s.previewBitmap, s.isProcessing)
                 Spacer(Modifier.height(4.dp))
                 when (s.activeTab) {
-                    EditorTab.COLOR_FORMULA -> FormulaPanel(s, vm)
-                    EditorTab.LUT -> LutTab(s, vm, { lutPicker.launch("*/*") })
-                    EditorTab.WATERMARK -> WatermarkTab(s, vm)
+                    EditorTab.COLOR_FORMULA -> FormulaPanel(s, vm, { showSaveDialog = true })
+                    EditorTab.LUT -> LutTab(s, vm, { lutPicker.launch("*/*") }, { showSaveDialog = true })
+                    EditorTab.WATERMARK -> WatermarkTab(s, vm, { showSaveDialog = true })
                     EditorTab.PRESETS -> PresetsTab(vm)
                 }
             }
@@ -209,7 +209,7 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean)
 // ═══ Color Formula Panel ═══
 
 @Composable
-private fun FormulaPanel(s: EditorState, vm: EditorViewModel) {
+private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit) {
     val f = s.colorFormula
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
         // Global intensity
@@ -275,7 +275,7 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel) {
                 Spacer(Modifier.width(6.dp))
                 Text("重置")
             }
-            Button({ showSaveDialog = true }, shape = RoundedCornerShape(10.dp),
+                Button(onSavePreset, shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
                 Icon(Icons.Default.Save, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
@@ -288,7 +288,7 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel) {
 // ═══ LUT Tab ═══
 
 @Composable
-private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit) {
+private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, onSavePreset: () -> Unit) {
     val lut = s.lutPreset
     Column(Modifier.weight(1f).padding(16.dp)) {
         if (lut.lutData.isEmpty()) {
@@ -328,7 +328,7 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Button({ showSaveDialog = true }, Modifier.fillMaxWidth(),
+            Button(onSavePreset, Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
                 Icon(Icons.Default.Save, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
@@ -341,7 +341,7 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit) {
 // ═══ Watermark Tab ═══
 
 @Composable
-private fun WatermarkTab(s: EditorState, vm: EditorViewModel) {
+private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit) {
     val w = s.watermarkPreset
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -401,7 +401,7 @@ private fun WatermarkTab(s: EditorState, vm: EditorViewModel) {
         }
 
         // Save
-        Button({ showSaveDialog = true }, Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        Button(onSavePreset, Modifier.fillMaxWidth().padding(vertical = 12.dp),
             shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
             Icon(Icons.Default.Save, null, Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
