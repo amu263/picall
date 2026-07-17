@@ -5,11 +5,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -190,10 +186,8 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
 
     Column(modifier) {
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
-            AnimatedContent(targetState = bitmap, transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "preview") { bmp ->
-                if (bmp != null) {
-                Image(bmp.asImageBitmap(), "预览", Modifier
+            if (bitmap != null) {
+                Image(bitmap.asImageBitmap(), "预览", Modifier
                     .fillMaxSize()
                     .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
                     .pointerInput(Unit) {
@@ -208,7 +202,6 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
                 CircularProgressIndicator(Modifier.size(28.dp).align(Alignment.TopEnd).padding(12.dp),
                     color = SliderActive, strokeWidth = 2.dp)
             }
-            } // AnimatedContent
         }
         HistogramView(bitmap, Modifier.fillMaxWidth())
     }

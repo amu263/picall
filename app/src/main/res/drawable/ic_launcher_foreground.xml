@@ -1,26 +1,49 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 相机光圈图标 -->
-    <group
-        android:translateX="27"
-        android:translateY="27">
-        <!-- 外圈 -->
-        <path
-            android:fillColor="#E94560"
-            android:pathData="M27,0C41.912,0 54,12.088 54,27C54,41.912 41.912,54 27,54C12.088,54 0,41.912 0,27C0,12.088 12.088,0 27,0ZM27,8C16.507,8 8,16.507 8,27C8,37.493 16.507,46 27,46C37.493,46 46,37.493 46,27C46,16.507 37.493,8 27,8Z"/>
-        <!-- 内圈 -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M27,14C34.18,14 40,19.82 40,27C40,34.18 34.18,40 27,40C19.82,40 14,34.18 14,27C14,19.82 19.82,14 27,14Z"/>
-        <!-- 快门叶片 -->
-        <path
-            android:fillColor="#E94560"
-            android:pathData="M27,18L27,36M18,27L36,27M20.636,20.636L33.364,33.364M20.636,33.364L33.364,20.636"
-            android:strokeWidth="2"
-            android:strokeColor="#E94560"/>
-    </group>
+    <!-- White background -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M0,0h108v108H0z"/>
+    <!-- Film canister body in cyan -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M30,20 L78,20 C82,20 85,23 85,27 L85,81 C85,85 82,88 78,88 L30,88 C26,88 23,85 23,81 L23,27 C23,23 26,20 30,20Z"/>
+    <!-- Canister highlight -->
+    <path
+        android:fillColor="#4DD0E1"
+        android:pathData="M33,23 C48,23 48,25 53,25 L53,83 C48,83 48,85 33,85 C30,85 28,82 28,79 L28,29 C28,26 30,23 33,23Z"/>
+    <!-- Film outlet (top black rectangle) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M38,16 L70,16 C70,16 73,16 73,19 L73,26 C73,26 70,26 70,26 L38,26 C38,26 35,26 35,23 L35,19 C35,16 38,16 38,16Z"/>
+    <!-- Label sticker -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,45 L70,45 C72,45 74,47 74,49 L74,63 C74,65 72,67 70,67 L38,67 C36,67 34,65 34,63 L34,49 C34,47 36,45 38,45Z"/>
+    <!-- Film cartridge (right side) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M80,25 L85,25 C85,25 86,26 86,28 L86,80 C86,82 85,83 83,83 L80,83Z"/>
+    <!-- Perforation dots (white on dark strip) -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M82,30 L84,30 L84,78 L82,78Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M83,33 m-1.5,0 a1.5,1.5 0,1 1,3 0 a1.5,1.5 0,1 1,-3 0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M83,42 m-1.5,0 a1.5,1.5 0,1 1,3 0 a1.5,1.5 0,1 1,-3 0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M83,51 m-1.5,0 a1.5,1.5 0,1 1,3 0 a1.5,1.5 0,1 1,-3 0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M83,60 m-1.5,0 a1.5,1.5 0,1 1,3 0 a1.5,1.5 0,1 1,-3 0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M83,69 m-1.5,0 a1.5,1.5 0,1 1,3 0 a1.5,1.5 0,1 1,-3 0"/>
 </vector>

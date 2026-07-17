@@ -44,6 +44,7 @@ class EditorViewModel(
 
     private val history = mutableListOf<ColorFormula>()
     private var previewJob: Job? = null
+    private var lastPreview: Bitmap? = null
 
     fun loadImage(bitmap: Bitmap, uri: Uri? = null) {
         history.clear()
@@ -196,7 +197,11 @@ class EditorViewModel(
 
             val old = _state.value.previewBitmap
             _state.update { it.copy(previewBitmap = result, isProcessing = false) }
-            if (old !== original && old !== result) old?.recycle()
+            // Delay recycle to avoid crash from Compose still rendering old bitmap
+            if (old !== original && old !== result && old !== lastPreview) {
+                lastPreview?.recycle()
+            }
+            lastPreview = old
         }
     }
 
