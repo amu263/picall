@@ -1,7 +1,6 @@
 package com.picall.app.imageprocessing.watermark
 
 import android.graphics.*
-import android.location.Geocoder
 import androidx.exifinterface.media.ExifInterface
 import com.picall.app.data.model.*
 import java.text.SimpleDateFormat
@@ -118,14 +117,9 @@ object WatermarkRenderer {
             if (preset.showLocation) {
                 val lat = exif.latLong
                 if (lat != null && lat.size == 2) {
-                    try {
-                        val geocoder = Geocoder(java.util.Locale.getDefault())
-                        val addr = geocoder.getFromLocation(lat[0], lat[1], 1)
-                        if (!addr.isNullOrEmpty()) {
-                            val locality = addr[0].locality ?: addr[0].subAdminArea ?: addr[0].adminArea
-                            if (!locality.isNullOrEmpty()) parts.add(locality)
-                        }
-                    } catch (_: Exception) {}
+                    val latStr = formatGPS(lat[0], "N", "S")
+                    val lonStr = formatGPS(lat[1], "E", "W")
+                    parts.add("$latStr $lonStr")
                 }
             }
         } catch (_: Exception) {}
@@ -210,5 +204,14 @@ object WatermarkRenderer {
             addRoundRect(x, y, x + img.width, y + img.height, radius.toFloat(), radius.toFloat(), Path.Direction.CW)
         }
         canvas.save(); canvas.clipPath(path); canvas.drawBitmap(img, x, y, null); canvas.restore()
+    }
+
+    private fun formatGPS(coord: Double, pos: String, neg: String): String {
+        val abs = Math.abs(coord)
+        val deg = abs.toInt()
+        val min = ((abs - deg) * 60).toInt()
+        val sec = ((abs - deg - min / 60.0) * 3600).toInt()
+        val dir = if (coord >= 0) pos else neg
+        return "${deg}°${min}'${sec}\"$dir"
     }
 }
