@@ -15,203 +15,170 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.picall.app.data.model.CurvePoint
 import com.picall.app.ui.theme.*
 
-/**
- * WRGB 曲线编辑器 — 支持 4 通道 (W/R/G/B) 交互式曲线编辑
- *
- * 用户可以在曲线上点击添加控制点，拖拽移动控制点，
- * 使用 Catmull-Rom 样条在控制点之间平滑插值
- */
 @Composable
 fun CurvesEditor(
     channelLabel: String,
     points: List<CurvePoint>,
     onPointsChanged: (List<CurvePoint>) -> Unit,
-    modifier: Modifier = Modifier,
-    lineColor: Color = CurveLine,
-    gridColor: Color = CurveGrid
+    selectedChannel: String = "W",
+    onChannelChanged: (String) -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     var selectedPointIndex by remember { mutableStateOf(-1) }
-    val sortedPoints = remember(points) { points.sortedBy { it.x } }
+    var dragValue by remember { mutableStateOf("") }
+    val sorted = remember(points) { points.sortedBy { it.x } }
 
-    Column(modifier = modifier) {
-        // 通道标签
-        Text(
-            text = channelLabel,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(CurveBackground)
-                .pointerInput(sortedPoints) {
-                    detectTapGestures { offset ->
-                        // 检查是否点击了现有点
-                        val pointSize = 24f
-                        val clickedIndex = sortedPoints.indexOfFirst { pt ->
-                            val px = pt.x * size.width
-                            val py = (1f - pt.y) * size.height
-                            (offset - Offset(px, py)).getDistance() < pointSize
-                        }
-                        if (clickedIndex >= 0) {
-                            selectedPointIndex = clickedIndex
-                        } else {
-                            // 添加新控制点
-                            val newX = (offset.x / size.width).coerceIn(0f, 1f)
-                            val newY = (1f - offset.y / size.height).coerceIn(0f, 1f)
-                            val newPoint = CurvePoint(newX, newY)
-                            val newPoints = (sortedPoints + newPoint).sortedBy { it.x }
-                            selectedPointIndex = newPoints.indexOf(newPoint)
-                            onPointsChanged(newPoints)
-                        }
-                    }
-                }
-                .pointerInput(sortedPoints, selectedPointIndex) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            val pointSize = 24f
-                            selectedPointIndex = sortedPoints.indexOfFirst { pt ->
-                                val px = pt.x * size.width
-                                val py = (1f - pt.y) * size.height
-                                (offset - Offset(px, py)).getDistance() < pointSize
-                            }
-                        },
-                        onDragEnd = { selectedPointIndex = -1 },
-                        onDragCancel = { selectedPointIndex = -1 }
-                    ) { change, _ ->
-                        if (selectedPointIndex in sortedPoints.indices) {
-                            change.consume()
-                            // 不能移动首尾点的 X 坐标
-                            val isEndpoint = selectedPointIndex == 0 || selectedPointIndex == sortedPoints.size - 1
-                            val newX = if (isEndpoint) {
-                                sortedPoints[selectedPointIndex].x
-                            } else {
-                                (change.position.x / size.width)
-                                    .coerceIn(
-                                        sortedPoints.getOrElse(selectedPointIndex - 1) { sortedPoints.first() }.x + 0.02f,
-                                        sortedPoints.getOrElse(selectedPointIndex + 1) { sortedPoints.last() }.x - 0.02f
-                                    )
-                            }
-                            val newY = (1f - change.position.y / size.height).coerceIn(0f, 1f)
-                            val updated = sortedPoints.toMutableList()
-                            updated[selectedPointIndex] = CurvePoint(newX, newY)
-                            onPointsChanged(updated)
-                        }
-                    }
-                }
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val canvasWidth = size.width
-                val canvasHeight = size.height
-
-                // 网格线
-                for (i in 1..3) {
-                    val x = canvasWidth * i / 4f
-                    drawLine(gridColor, Offset(x, 0f), Offset(x, canvasHeight), 1f)
-                    val y = canvasHeight * i / 4f
-                    drawLine(gridColor, Offset(0f, y), Offset(canvasWidth, y), 1f)
-                }
-
-                // 对角线参考线
-                drawLine(
-                    gridColor.copy(alpha = 0.3f),
-                    Offset(0f, canvasHeight),
-                    Offset(canvasWidth, 0f),
-                    1f
-                )
-
-                // 样条曲线
-                if (sortedPoints.size >= 2 && canvasWidth > 0) {
-                    val path = Path()
-                    for (i in 0 until 256) {
-                        val t = i / 255f
-                        val y = evaluateSpline(sortedPoints, t)
-                        val px = t * canvasWidth
-                        val py = (1f - y) * canvasHeight
-                        if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
-                    }
-                    drawPath(path, lineColor, style = Stroke(width = 2.5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                }
-
-                // 控制点
-                sortedPoints.forEachIndexed { index, point ->
-                    val cx = point.x * canvasWidth
-                    val cy = (1f - point.y) * canvasHeight
-                    val isSelected = index == selectedPointIndex
-                    val radius = if (isSelected) 10f else 7f
-                    val alpha = if (isSelected) 1f else 0.8f
-
-                    drawCircle(
-                        color = SliderActive.copy(alpha = alpha),
-                        radius = radius + 2f,
-                        center = Offset(cx, cy)
-                    )
-                    drawCircle(
-                        color = Color.White.copy(alpha = alpha),
-                        radius = radius,
-                        center = Offset(cx, cy)
-                    )
-                }
+    Column(modifier) {
+        // Channel buttons
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf("W" to CurveChannelW, "R" to CurveChannelR, "G" to CurveChannelG, "B" to CurveChannelB).forEach { (ch, color) ->
+                FilterChip(selectedChannel == ch, { onChannelChanged(ch) },
+                    label = { Text(ch, fontSize = 11.sp) },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = color.copy(alpha = 0.25f)),
+                    modifier = Modifier.weight(1f).height(28.dp))
             }
         }
 
-        // 重置按钮
-        TextButton(
-            onClick = {
-                onPointsChanged(
-                    listOf(CurvePoint(0f, 0f), CurvePoint(1f, 1f))
-                )
-            },
-            modifier = Modifier.align(Alignment.End)
+        // Canvas
+        Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF111111))
+            .pointerInput(sorted) {
+                detectTapGestures { offset ->
+                    val ptSize = 20f
+                    val hit = sorted.indexOfFirst { pt ->
+                        val px = pt.x * size.width; val py = (1f - pt.y) * size.height
+                        (offset - Offset(px, py)).getDistance() < ptSize
+                    }
+                    if (hit >= 0) selectedPointIndex = hit
+                    else {
+                        val nx = (offset.x / size.width).coerceIn(0f, 1f)
+                        val ny = (1f - offset.y / size.height).coerceIn(0f, 1f)
+                        val updated = (sorted + CurvePoint(nx, ny)).sortedBy { it.x }
+                        selectedPointIndex = updated.indexOfFirst { it.x == nx }
+                        onPointsChanged(updated)
+                    }
+                }
+            }
+            .pointerInput(sorted, selectedPointIndex) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        val ptSize = 20f
+                        selectedPointIndex = sorted.indexOfFirst { pt ->
+                            val px = pt.x * size.width; val py = (1f - pt.y) * size.height
+                            (offset - Offset(px, py)).getDistance() < ptSize
+                        }
+                    },
+                    onDragEnd = { selectedPointIndex = -1; dragValue = "" },
+                    onDragCancel = { selectedPointIndex = -1; dragValue = "" }
+                ) { change, _ ->
+                    if (selectedPointIndex in sorted.indices) {
+                        change.consume()
+                        val isEndpoint = selectedPointIndex == 0 || selectedPointIndex == sorted.size - 1
+                        val nx = if (isEndpoint) sorted[selectedPointIndex].x
+                        else (change.position.x / size.width).coerceIn(
+                            sorted.getOrElse(selectedPointIndex - 1) { sorted.first() }.x + 0.02f,
+                            sorted.getOrElse(selectedPointIndex + 1) { sorted.last() }.x - 0.02f)
+                        val ny = (1f - change.position.y / size.height).coerceIn(0f, 1f)
+                        val updated = sorted.toMutableList()
+                        updated[selectedPointIndex] = CurvePoint(nx, ny)
+                        onPointsChanged(updated)
+                        dragValue = "X: ${"%.2f".format(nx)} Y: ${"%.2f".format(ny)}"
+                    }
+                }
+            }
         ) {
-            Text("重置曲线", style = MaterialTheme.typography.labelSmall)
+            val cw = size.width; val ch = size.height
+
+            // Grid
+            for (i in 1..3) {
+                val x = cw * i / 4f; drawLine(Color(0xFF333333), Offset(x, 0f), Offset(x, ch), 1f)
+                val y = ch * i / 4f; drawLine(Color(0xFF333333), Offset(0f, y), Offset(cw, y), 1f)
+            }
+            drawLine(Color(0xFF444444), Offset(0f, ch), Offset(cw, 0f), 1f)
+
+            // Spline curve
+            if (sorted.size >= 2 && cw > 0) {
+                val path = Path()
+                for (i in 0 until 256) {
+                    val t = i / 255f; val y = evaluateSpline(sorted, t)
+                    val px = t * cw; val py = (1f - y) * ch
+                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                }
+                drawPath(path, CurveLine, style = Stroke(2.5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+
+            // Control points
+            sorted.forEachIndexed { index, pt ->
+                val cx = pt.x * cw; val cy = (1f - pt.y) * ch
+                val sel = index == selectedPointIndex; val r = if (sel) 10f else 7f; val a = if (sel) 1f else 0.8f
+                drawCircle(CurvePointColor.copy(alpha = a), r + 2f, Offset(cx, cy))
+                drawCircle(Color.White.copy(alpha = a), r, Offset(cx, cy))
+            }
+
+            // Value indicator
+            if (dragValue.isNotEmpty()) {
+                drawRoundRect(Color.Black.copy(alpha = 0.7f), topLeft = Offset(4f, 4f),
+                    size = Size(dragValue.length * 8f + 16f, 20f), cornerRadius = CornerRadius(4f))
+            }
+        }
+
+        // Drag value
+        if (dragValue.isNotEmpty()) {
+            Text(dragValue, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(horizontal = 4.dp))
+        }
+
+        // Preset buttons + reset
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton({ onPointsChanged(sCurvePreset()) }, Modifier.weight(1f),
+                shape = RoundedCornerShape(6.dp), colors = ButtonDefaults.textButtonColors(contentColor = SliderActive)) {
+                Text("S曲线", fontSize = 10.sp)
+            }
+            TextButton({ onPointsChanged(liftShadowsPreset()) }, Modifier.weight(1f),
+                shape = RoundedCornerShape(6.dp)) {
+                Text("提亮暗部", fontSize = 10.sp)
+            }
+            TextButton({ onPointsChanged(crushHighlightsPreset()) }, Modifier.weight(1f),
+                shape = RoundedCornerShape(6.dp)) {
+                Text("压暗高光", fontSize = 10.sp)
+            }
+            TextButton({
+                onPointsChanged(listOf(CurvePoint(0f, 0f), CurvePoint(1f, 1f)))
+            }, Modifier.weight(1f), shape = RoundedCornerShape(6.dp)) {
+                Text("重置", fontSize = 10.sp)
+            }
         }
     }
 }
 
-/**
- * 使用 Catmull-Rom 样条计算曲线上指定 x 处的 y 值
- */
-private fun evaluateSpline(points: List<CurvePoint>, t: Float): Float {
+fun sCurvePreset() = listOf(CurvePoint(0f, 0f), CurvePoint(0.25f, 0.15f), CurvePoint(0.5f, 0.5f), CurvePoint(0.75f, 0.85f), CurvePoint(1f, 1f))
+fun liftShadowsPreset() = listOf(CurvePoint(0f, 0f), CurvePoint(0.15f, 0.22f), CurvePoint(0.5f, 0.5f), CurvePoint(1f, 1f))
+fun crushHighlightsPreset() = listOf(CurvePoint(0f, 0f), CurvePoint(0.5f, 0.5f), CurvePoint(0.75f, 0.68f), CurvePoint(1f, 1f))
+
+fun evaluateSpline(points: List<CurvePoint>, t: Float): Float {
     val sorted = points.sortedBy { it.x }
     if (sorted.isEmpty()) return t
     if (sorted.size == 1) return sorted[0].y
-
-    // 找到 t 所在的段
-    var seg = 0
-    for (i in 0 until sorted.size - 1) {
-        if (t >= sorted[i].x && t <= sorted[i + 1].x) {
-            seg = i
-            break
-        }
-    }
     if (t <= sorted.first().x) return sorted.first().y
     if (t >= sorted.last().x) return sorted.last().y
 
-    val p0 = sorted.getOrElse(seg - 1) { sorted[0] }
-    val p1 = sorted[seg]
-    val p2 = sorted[seg + 1]
-    val p3 = sorted.getOrElse(seg + 2) { sorted.last() }
+    var seg = 0
+    for (i in 0 until sorted.size - 1) if (t in sorted[i].x..sorted[i + 1].x) { seg = i; break }
 
-    val localT = if (p2.x != p1.x) (t - p1.x) / (p2.x - p1.x) else 0f
-
-    // Catmull-Rom
-    val t2 = localT * localT
-    val t3 = t2 * localT
-    val result = 0.5f * (
-        (2f * p1.y) +
-        (-p0.y + p2.y) * localT +
-        (2f * p0.y - 5f * p1.y + 4f * p2.y - p3.y) * t2 +
-        (-p0.y + 3f * p1.y - 3f * p2.y + p3.y) * t3
-    )
-
-    return result.coerceIn(0f, 1f)
+    val p0 = sorted.getOrElse(seg - 1) { sorted[0] }; val p1 = sorted[seg]
+    val p2 = sorted[seg + 1]; val p3 = sorted.getOrElse(seg + 2) { sorted.last() }
+    val lt = if (p2.x != p1.x) (t - p1.x) / (p2.x - p1.x) else 0f
+    val t2 = lt * lt; val t3 = t2 * lt
+    return (0.5f * ((2f * p1.y) + (-p0.y + p2.y) * lt +
+            (2f * p0.y - 5f * p1.y + 4f * p2.y - p3.y) * t2 +
+            (-p0.y + 3f * p1.y - 3f * p2.y + p3.y) * t3)).coerceIn(0f, 1f)
 }
+
+private val CurvePointColor = Color(0xFFE94560)
