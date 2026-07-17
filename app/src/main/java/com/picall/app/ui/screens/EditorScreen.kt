@@ -76,52 +76,10 @@ fun EditorScreen(
                     val bitmap = BitmapFactory.decodeStream(stream)
                     if (bitmap != null) {
                         vm.loadImage(bitmap, it)
-            }
+                    }
+                }
+            } catch (_: Exception) {}
         }
-    }
-
-    // 保存预设对话框
-    if (showSaveDialog) {
-        AlertDialog(
-            onDismissRequest = { showSaveDialog = false },
-            title = { Text("保存预设") },
-            text = {
-                OutlinedTextField(
-                    value = presetName,
-                    onValueChange = { presetName = it },
-                    label = { Text("预设名称") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (presetName.isNotBlank()) {
-                            when (editorState.activeTab) {
-                                EditorTab.COLOR_FORMULA -> vm.saveColorFormulaPreset(presetName)
-                                EditorTab.LUT -> vm.saveLutPreset(presetName)
-                                EditorTab.WATERMARK -> vm.saveWatermarkPreset(presetName)
-                                else -> {}
-                            }
-                            presetName = ""
-                            showSaveDialog = false
-                            Toast.makeText(context, "预设已保存", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = SliderActive)
-                ) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSaveDialog = false; presetName = "" }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
-}
     }
 
     // LUT 文件选择器
