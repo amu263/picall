@@ -5,6 +5,8 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -347,70 +349,97 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, on
 @Composable
 private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit, modifier: Modifier = Modifier) {
     val w = s.watermarkPreset
-    Column(modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("不透明度", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(72.dp))
-            Slider(w.globalIntensity, { vm.updateWatermark { copy(globalIntensity = it) } }, valueRange = 0f..1f,
-                modifier = Modifier.weight(1f).height(20.dp),
-                colors = SliderDefaults.colors(thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack))
-            Text("${(w.globalIntensity * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(36.dp))
-        }
-        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+    var frameExpanded by remember { mutableStateOf(true) }
+    var exifExpanded by remember { mutableStateOf(true) }
 
-        // Text
-        FilterCategoryCard("文字", true, {}, w.textOpacity, { vm.updateWatermark { copy(textOpacity = it) } }) {
-            OutlinedTextField(w.textContent, { vm.updateWatermark { copy(textContent = it) } },
-                label = { Text("水印文字") }, modifier = Modifier.fillMaxWidth(),
-                maxLines = 3, shape = RoundedCornerShape(8.dp))
-            Spacer(Modifier.height(8.dp))
-            AdjustmentSlider("字体大小", w.fontSize / 72f, { vm.updateWatermark { copy(fontSize = it * 72f) } },
-                valueRange = 0.1f..1f, displayValue = "${w.fontSize.toInt()}sp")
-        }
-
-        // Position
-        FilterCategoryCard("位置", false, {}, w.globalIntensity, {}) {
-            val positions = listOf(
-                listOf(WatermarkPosition.TOP_LEFT, WatermarkPosition.TOP_CENTER, WatermarkPosition.TOP_RIGHT),
-                listOf(WatermarkPosition.CENTER_LEFT, WatermarkPosition.CENTER, WatermarkPosition.CENTER_RIGHT),
-                listOf(WatermarkPosition.BOTTOM_LEFT, WatermarkPosition.BOTTOM_CENTER, WatermarkPosition.BOTTOM_RIGHT)
-            )
-            positions.forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    row.forEach { pos ->
-                        Box(Modifier.size(40.dp).clip(RoundedCornerShape(6.dp))
-                            .background(if (w.position == pos) SliderActive.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { vm.updateWatermark { copy(position = pos) } },
-                            contentAlignment = Alignment.Center) {
-                            Text(posSymbol(pos), style = MaterialTheme.typography.titleMedium)
+    Column(modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp)) {
+        // Frame style selection
+        Card(shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        ) {
+            Column {
+                Row(Modifier.fillMaxWidth().clickable { frameExpanded = !frameExpanded }.padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("相框样式", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Icon(if (frameExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                AnimatedVisibility(frameExpanded) {
+                    Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        val styles = FrameStyle.entries.toList()
+                        styles.chunked(2).forEach { row ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                row.forEach { style ->
+                                    val selected = w.frameStyle == style
+                                    Surface(
+                                        modifier = Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(8.dp))
+                                            .clickable { vm.updateWatermark { copy(frameStyle = style) } },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (selected) SliderActive.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
+                                        border = if (selected) androidx.compose.foundation.BorderStroke(1.5.dp, SliderActive) else null
+                                    ) {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text(frameLabel(style), fontSize = 11.sp,
+                                                color = if (selected) SliderActive else MaterialTheme.colorScheme.onSurface,
+                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+                                        }
+                                    }
+                                }
+                                if (row.size < 2) Spacer(Modifier.weight(1f))
+                            }
+                            Spacer(Modifier.height(4.dp))
                         }
                     }
                 }
             }
         }
 
-        // Frame
-        FilterCategoryCard("相框样式", false, {}, w.frameWidth / 20f, { vm.updateWatermark { copy(frameWidth = it * 20f) } }) {
-            val styles = FrameStyle.entries.toList()
-            styles.chunked(2).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    row.forEach { style ->
-                        FilterChip(w.frameStyle == style, { vm.updateWatermark { copy(frameStyle = style) } },
-                            label = { Text(frameLabel(style), fontSize = 10.sp) },
-                            modifier = Modifier.weight(1f).height(28.dp))
+        Spacer(Modifier.height(8.dp))
+
+        // EXIF info toggles
+        Card(shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        ) {
+            Column {
+                Row(Modifier.fillMaxWidth().clickable { exifExpanded = !exifExpanded }.padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("照片参数", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.width(8.dp))
+                        Switch(w.showExif, { vm.updateWatermark { copy(showExif = it) } }, Modifier.height(24.dp))
                     }
-                    if (row.size < 2) Spacer(Modifier.weight(1f))
+                    Icon(if (exifExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Spacer(Modifier.height(2.dp))
+                AnimatedVisibility(exifExpanded) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        ExifToggle("设备名称", w.showDevice) { vm.updateWatermark { copy(showDevice = it) } }
+                        ExifToggle("拍摄参数", w.showParams) { vm.updateWatermark { copy(showParams = it) } }
+                        ExifToggle("拍摄时间", w.showDateTime) { vm.updateWatermark { copy(showDateTime = it) } }
+                        ExifToggle("拍摄位置", w.showLocation) { vm.updateWatermark { copy(showLocation = it) } }
+                    }
+                }
             }
         }
 
-        // Save
-        Button(onSavePreset, Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        Spacer(Modifier.height(8.dp))
+
+        Button(onSavePreset, Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
             Icon(Icons.Default.Save, null, Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text("保存为预设")
         }
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun ExifToggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Switch(checked, onChange, Modifier.height(24.dp))
     }
 }
 

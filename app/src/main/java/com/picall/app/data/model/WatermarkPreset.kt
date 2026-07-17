@@ -7,41 +7,18 @@ import com.google.gson.annotations.SerializedName
  * 水印相框预设 — 自定义水印和相框的所有参数
  */
 data class WatermarkPreset(
-    // ── 文字设置 ──
-    @SerializedName("text_content") val textContent: String = "",
-    @SerializedName("text_lines") val textLines: List<WatermarkTextLine> = emptyList(),
-    @SerializedName("font_size") val fontSize: Float = 36f,            // sp
-    @SerializedName("font_path") val fontPath: String = "",             // 自定义字体路径
-    @SerializedName("text_color") val textColor: Long = 0xFFFFFFFF,    // ARGB
-    @SerializedName("text_opacity") val textOpacity: Float = 0.9f,     // 0.0 .. 1.0
-    @SerializedName("text_shadow") val textShadow: Boolean = true,
-    @SerializedName("text_shadow_color") val textShadowColor: Long = 0x80000000,
-    @SerializedName("text_shadow_radius") val textShadowRadius: Float = 4f,
-    @SerializedName("letter_spacing") val letterSpacing: Float = 1f,   // sp
-
-    // ── 位置 ──
-    @SerializedName("position") val position: WatermarkPosition = WatermarkPosition.BOTTOM_RIGHT,
-    @SerializedName("offset_x") val offsetX: Float = 16f,    // dp 偏移
-    @SerializedName("offset_y") val offsetY: Float = 16f,
-    @SerializedName("alignment_lines") val alignmentLines: Int = 1,     // 行数
+    // ── 相框样式 ──
+    @SerializedName("frame_style") val frameStyle: FrameStyle = FrameStyle.CLASSIC_MATTE,
 
     // ── EXIF 参数显示 ──
-    @SerializedName("show_exif") val showExif: Boolean = false,
-    @SerializedName("exif_items") val exifItems: List<ExifDisplayItem> = emptyList(),
-    @SerializedName("exif_separator") val exifSeparator: String = " | ",
-    @SerializedName("exif_font_size") val exifFontSize: Float = 14f,
-
-    // ── 相框样式 ──
-    @SerializedName("frame_style") val frameStyle: FrameStyle = FrameStyle.NONE,
-    @SerializedName("frame_color") val frameColor: Long = 0xFFFFFFFF,
-    @SerializedName("frame_width") val frameWidth: Float = 8f,          // dp
-    @SerializedName("frame_padding") val framePadding: Float = 20f,     // dp 内边距
-    @SerializedName("frame_radius") val frameRadius: Float = 0f,        // dp 圆角
-    @SerializedName("frame_bg_color") val frameBgColor: Long = 0xFFFFFFFF,
-    @SerializedName("frame_bg_opacity") val frameBgOpacity: Float = 0.15f,
+    @SerializedName("show_exif") val showExif: Boolean = true,
+    @SerializedName("show_device") val showDevice: Boolean = true,
+    @SerializedName("show_params") val showParams: Boolean = true,
+    @SerializedName("show_datetime") val showDateTime: Boolean = true,
+    @SerializedName("show_location") val showLocation: Boolean = false,
 
     // ── 全局强度 ──
-    @SerializedName("global_intensity") val globalIntensity: Float = 1f  // 水印整体不透明度
+    @SerializedName("global_intensity") val globalIntensity: Float = 1f
 ) {
     companion object {
         val DEFAULT = WatermarkPreset()

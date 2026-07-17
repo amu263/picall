@@ -1,6 +1,7 @@
 package com.picall.app.imageprocessing
 
 import android.graphics.Bitmap
+import android.net.Uri
 import com.picall.app.data.model.ColorFormula
 import com.picall.app.data.model.LutPreset
 import com.picall.app.data.model.WatermarkPreset
@@ -15,6 +16,7 @@ class ImageProcessor {
         formula: ColorFormula,
         lut: LutPreset,
         watermark: WatermarkPreset,
+        sourceUri: Uri? = null,
         maxDim: Int = 640
     ): Bitmap {
         val scale = maxDim.toFloat() / maxOf(original.width, original.height)
@@ -36,7 +38,7 @@ class ImageProcessor {
             result = LutApplier.applyLut(result, lut.lutData, lut.lutSize, lut.intensity)
         }
 
-        result = WatermarkRenderer.render(result, watermark)
+        result = WatermarkRenderer.render(result, watermark, sourceUri?.path ?: sourceUri?.toString())
 
         return result
     }
@@ -45,7 +47,8 @@ class ImageProcessor {
         original: Bitmap,
         formula: ColorFormula,
         lut: LutPreset,
-        watermark: WatermarkPreset
+        watermark: WatermarkPreset,
+        sourceUri: Uri? = null
     ): Bitmap {
         var result = original.copy(Bitmap.Config.ARGB_8888, true)
 
@@ -57,7 +60,7 @@ class ImageProcessor {
             result = LutApplier.applyLut(result, lut.lutData, lut.lutSize, lut.intensity)
         }
 
-        result = WatermarkRenderer.render(result, watermark)
+        result = WatermarkRenderer.render(result, watermark, sourceUri?.path ?: sourceUri?.toString())
 
         return result
     }

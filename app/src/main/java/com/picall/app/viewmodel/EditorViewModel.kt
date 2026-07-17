@@ -169,7 +169,7 @@ class EditorViewModel(
         _state.update { it.copy(isExporting = true) }
         return try {
             withContext(Dispatchers.Default) {
-                processor.processExport(original, s.colorFormula, s.lutPreset, s.watermarkPreset)
+                processor.processExport(original, s.colorFormula, s.lutPreset, s.watermarkPreset, s.sourceUri)
             }
         } finally {
             _state.update { it.copy(isExporting = false) }
@@ -187,7 +187,7 @@ class EditorViewModel(
             _state.update { it.copy(isProcessing = true) }
 
             val result = withContext(Dispatchers.Default) {
-                processor.processPreview(original, s.colorFormula, s.lutPreset, s.watermarkPreset)
+                processor.processPreview(original, s.colorFormula, s.lutPreset, s.watermarkPreset, s.sourceUri)
             }
 
             val old = _state.value.previewBitmap
