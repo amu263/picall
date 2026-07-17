@@ -189,22 +189,24 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
 
     Column(modifier) {
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
-        if (bitmap != null) {
-            Image(bitmap.asImageBitmap(), "预览", Modifier
-                .fillMaxSize()
-                .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(0.5f, 5f)
-                        offset = Offset(offset.x + pan.x, offset.y + pan.y)
-                    }
-                },
-                contentScale = ContentScale.Fit)
+            if (bitmap != null) {
+                Image(bitmap.asImageBitmap(), "预览", Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(0.5f, 5f)
+                            offset = Offset(offset.x + pan.x, offset.y + pan.y)
+                        }
+                    },
+                    contentScale = ContentScale.Fit)
+            }
+            if (isProcessing) {
+                CircularProgressIndicator(Modifier.size(28.dp).align(Alignment.TopEnd).padding(12.dp),
+                    color = SliderActive, strokeWidth = 2.dp)
+            }
         }
-        if (isProcessing) {
-            CircularProgressIndicator(Modifier.size(28.dp).align(Alignment.TopEnd).padding(12.dp),
-                color = SliderActive, strokeWidth = 2.dp)
-        }
+        HistogramView(bitmap, Modifier.fillMaxWidth())
     }
 }
 
@@ -505,5 +507,4 @@ private fun saveToGallery(ctx: android.content.Context, bitmap: android.graphics
             ctx.contentResolver.openOutputStream(it)?.use { os -> bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, os) }
         }
     } catch (_: Exception) {}
-}
 }
