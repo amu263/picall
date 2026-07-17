@@ -114,8 +114,14 @@ private fun CanisterGraphic(item: FilmPresetItem) {
         val cp = android.graphics.Paint().apply { color = 0xDD1E1E1E.toInt(); isAntiAlias = true }
         nc.drawRoundRect(w * 0.86f, canY + canH * 0.08f, w * 0.99f, canY + canH * 0.92f, 4f, 4f, cp)
 
-        val dp = android.graphics.Paint().apply { color = 0x50000000.toInt() }
-        for (i in 0..4) nc.drawCircle(w * 0.93f, canY + canH * 0.15f + i * canH * 0.17f, w * 0.018f, dp)
+        // Perforation strip in dominant color
+        val stripColor = colors[0].hashCode()
+        val stripPaint = android.graphics.Paint().apply { color = stripColor; isAntiAlias = true }
+        nc.drawRoundRect(w * 0.91f, canY + canH * 0.06f, w * 0.97f, canY + canH * 0.94f, 2f, 2f, stripPaint)
+
+        // Perforation holes (white)
+        val dp = android.graphics.Paint().apply { color = 0xFFFFFFFF.toInt() }
+        for (i in 0..4) nc.drawCircle(w * 0.94f, canY + canH * 0.15f + i * canH * 0.17f, w * 0.018f, dp)
     }
 }
 
@@ -170,8 +176,13 @@ fun generateThumbnailBitmap(formula: ColorFormula, name: String, width: Int = 16
     val cp = android.graphics.Paint().apply { color = 0xDD1E1E1E.toInt(); isAntiAlias = true }
     canvas.drawRoundRect(width * 0.86f, canY + canH * 0.06f, width * 0.99f, canY + canH * 0.94f, 6f, 6f, cp)
 
-    val dp = android.graphics.Paint().apply { color = 0x60000000.toInt() }
-    for (i in 0..5) canvas.drawCircle(width * 0.93f, canY + canH * 0.15f + i * canH * 0.13f, width * 0.016f, dp)
+    // Perforation strip in dominant color
+    val sp = android.graphics.Paint().apply { color = c0; isAntiAlias = true }
+    canvas.drawRoundRect(width * 0.91f, canY + canH * 0.04f, width * 0.97f, canY + canH * 0.96f, 3f, 3f, sp)
+
+    // Perforation holes (white)
+    val dp = android.graphics.Paint().apply { color = 0xFFFFFFFF.toInt() }
+    for (i in 0..5) canvas.drawCircle(width * 0.94f, canY + canH * 0.15f + i * canH * 0.13f, width * 0.016f, dp)
 
     return bmp
 }
