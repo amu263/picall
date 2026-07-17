@@ -192,7 +192,7 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
             AnimatedContent(targetState = bitmap, transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "preview") { bmp ->
                 if (bmp != null) {
-                Image(bitmap.asImageBitmap(), "预览", Modifier
+                Image(bmp.asImageBitmap(), "预览", Modifier
                     .fillMaxSize()
                     .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
                     .pointerInput(Unit) {

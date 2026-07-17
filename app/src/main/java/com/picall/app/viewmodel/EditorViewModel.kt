@@ -162,32 +162,15 @@ class EditorViewModel(
     fun savePreset(name: String, onResult: ((Boolean, String) -> Unit)? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             val s = _state.value
-            // Check duplicate name
             val existing = repository.getAllPresets().first().any { it.name == name }
             if (existing) {
                 withContext(Dispatchers.Main) { onResult?.invoke(false, "预设名称已存在") }
                 return@launch
             }
-            // Pack LUT data with formula JSON
             val lutData = s.lutPreset.lutData
-            // Generate thumbnail
-            val thumb = com.picall.app.ui.components.generateThumbnailBitmap(s.colorFormula, name)
-            val thumbPath = saveThumbnailToFile(thumb, name)
-            // Save
-            repository.saveColorFormula(name, s.colorFormula, lutData, thumbPath ?: "")
+            repository.saveColorFormula(name, s.colorFormula, lutData)
             withContext(Dispatchers.Main) { onResult?.invoke(true, "预设已保存") }
         }
-    }
-
-    private fun saveThumbnailToFile(bitmap: Bitmap, name: String): String? {
-        return try {
-            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
-                android.os.Environment.DIRECTORY_PICTURES), "Picall/Presets/Thumbnails")
-            dir.mkdirs()
-            val file = java.io.File(dir, "${name}_${System.currentTimeMillis()}.png")
-            java.io.FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
-            file.absolutePath
-        } catch (_: Exception) { null }
     }
 
     fun loadPreset(preset: Preset) {
