@@ -144,7 +144,18 @@ fun EditorScreen(
             EmptyState(onPick = { imgPicker.launch("image/*") })
         } else {
             Column(Modifier.fillMaxSize().padding(pad)) {
-                PreviewArea(s.previewBitmap, s.isProcessing, Modifier.weight(1f).fillMaxWidth())
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    PreviewArea(s.previewBitmap, s.isProcessing)
+                }
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton({ imgPicker.launch("image/*") }) {
+                        Icon(Icons.Default.AddPhotoAlternate, null, Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("换图", fontSize = 12.sp)
+                    }
+                    HistogramView(s.previewBitmap, Modifier.weight(1f))
+                }
                 Spacer(Modifier.height(4.dp))
                 when (s.activeTab) {
                     EditorTab.COLOR_FORMULA -> FormulaPanel(s, vm, { showSaveDialog = true }, { lutPicker.launch("*/*") }, Modifier.weight(1f))
@@ -185,29 +196,16 @@ fun EditorScreen(
 
 @Composable
 private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean, modifier: Modifier = Modifier) {
-    var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-
-    Column(modifier) {
-        Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
-            if (bitmap != null) {
-                Image(bitmap.asImageBitmap(), "预览", Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            scale = (scale * zoom).coerceIn(0.5f, 5f)
-                            offset = Offset(offset.x + pan.x, offset.y + pan.y)
-                        }
-                    },
-                    contentScale = ContentScale.Fit)
-            }
-            if (isProcessing) {
-                CircularProgressIndicator(Modifier.size(28.dp).align(Alignment.TopEnd).padding(12.dp),
-                    color = SliderActive, strokeWidth = 2.dp)
-            }
+    Box(modifier.background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
+        if (bitmap != null) {
+            Image(bitmap.asImageBitmap(), "预览",
+                Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit)
         }
-        HistogramView(bitmap, Modifier.fillMaxWidth())
+        if (isProcessing) {
+            CircularProgressIndicator(Modifier.size(28.dp).align(Alignment.TopEnd).padding(12.dp),
+                color = SliderActive, strokeWidth = 2.dp)
+        }
     }
 }
 
@@ -230,7 +228,16 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
         }
         for (p in savedLuts) {
             val l = p.toLutPreset() ?: continue
-            items.add(FilmPresetItem("lut_${p.id}", p.name, ColorFormula.DEFAULT, PresetType.LUT, l.lutData))
+            // Generate formula from LUT data hash for unique card color
+            val hash = l.lutData.hashCode()
+            val r = ((hash and 0xFF0000) shr 16) / 255f
+            val g = ((hash and 0x00FF00) shr 8) / 255f
+            val b = (hash and 0x0000FF) / 255f
+            val lutFormula = ColorFormula.DEFAULT.copy(
+                colorTemperature = (r - 0.5f).coerceIn(-1f, 1f),
+                tint = (g - 0.5f).coerceIn(-1f, 1f),
+                saturation = (0.3f + b * 0.5f).coerceIn(0f, 1f))
+            items.add(FilmPresetItem("lut_${p.id}", p.name, lutFormula, PresetType.LUT, l.lutData))
         }
         items
     }
