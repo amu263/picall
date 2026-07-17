@@ -506,3 +506,4 @@ private fun saveToGallery(ctx: android.content.Context, bitmap: android.graphics
         }
     } catch (_: Exception) {}
 }
+}
