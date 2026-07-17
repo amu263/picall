@@ -235,8 +235,8 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel) {
         FilterCategoryCard("颜色", s.expandedCategory == "color", { vm.toggleCategory("color") }, f.colorIntensity,
             { vm.updateFormula { copy(colorIntensity = it) } }) {
             AdjustmentSlider("饱和度", f.saturation, { vm.updateFormula { copy(saturation = it) } })
-            BidirectionalSlider("色温", f.colorTemperature, { vm.updateFormula { copy(colorTemperature = it) } }, "冷", "暖")
-            BidirectionalSlider("色调", f.tint, { vm.updateFormula { copy(tint = it) } }, "绿", "紫")
+            BidirectionalSlider("色温", f.colorTemperature, { vm.updateFormula { copy(colorTemperature = it) } }, negativeLabel = "冷", positiveLabel = "暖")
+            BidirectionalSlider("色调", f.tint, { vm.updateFormula { copy(tint = it) } }, negativeLabel = "绿", positiveLabel = "紫")
         }
 
         // RGB
