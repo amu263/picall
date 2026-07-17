@@ -1,150 +1,133 @@
 package com.picall.app.imageprocessing
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.ColorMatrix
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
-import com.picall.app.imageprocessing.filters.*
-import com.picall.app.imageprocessing.lut.LutApplier
-import com.picall.app.imageprocessing.watermark.WatermarkRenderer
 import com.picall.app.data.model.ColorFormula
 import com.picall.app.data.model.LutPreset
 import com.picall.app.data.model.WatermarkPreset
+import com.picall.app.imageprocessing.filters.*
+import com.picall.app.imageprocessing.lut.LutApplier
+import com.picall.app.imageprocessing.watermark.WatermarkRenderer
 
-/**
- * 图像处理器 — 主入口，根据配置构建滤镜管线并处理图片
- */
 class ImageProcessor {
 
-    private val pipeline = FilterPipeline()
-
-    /**
-     * 应用色彩配方 - 全分辨率
-     */
-    fun applyColorFormula(input: Bitmap, formula: ColorFormula): Bitmap {
-        pipeline.clear()
-        buildStages(formula)
-        return pipeline.process(input, formula.globalIntensity)
-    }
-
-    /**
-     * 快速预览 — 使用低分辨率
-     */
-    fun applyColorFormulaPreview(
-        input: Bitmap,
+    fun processPreview(
+        original: Bitmap,
         formula: ColorFormula,
-        maxDimension: Int = 1024
+        lut: LutPreset,
+        watermark: WatermarkPreset,
+        maxDim: Int = 640
     ): Bitmap {
-        pipeline.clear()
-        buildStages(formula)
-        return pipeline.processPreview(input, formula.globalIntensity, maxDimension)
+        val scale = maxDim.toFloat() / maxOf(original.width, original.height)
+        val input = if (scale < 1f) {
+            Bitmap.createScaledBitmap(original,
+                (original.width * scale).toInt(),
+                (original.height * scale).toInt(), true)
+        } else {
+            original.copy(Bitmap.Config.ARGB_8888, true)
+        }
+
+        var result = input
+
+        if (formula.globalIntensity > 0.001f) {
+            result = applyFormula(result, formula)
+        }
+
+        if (lut.lutData.isNotEmpty() && lut.intensity > 0.001f) {
+            result = LutApplier.applyLut(result, lut.lutData, lut.lutSize, lut.intensity)
+        }
+
+        result = WatermarkRenderer.render(result, watermark)
+
+        return result
     }
 
-    private fun buildStages(formula: ColorFormula) {
-        if (hasAdjustment(formula.exposure) || hasAdjustment(formula.contrast) ||
-            hasAdjustment(formula.highlights) || hasAdjustment(formula.shadows)
-        ) {
-            pipeline.addStage(
-                BrightnessFilter(
-                    exposure = formula.exposure,
-                    contrast = formula.contrast,
-                    highlights = formula.highlights,
-                    shadows = formula.shadows
-                ),
-                formula.brightnessIntensity
-            )
+    fun processExport(
+        original: Bitmap,
+        formula: ColorFormula,
+        lut: LutPreset,
+        watermark: WatermarkPreset
+    ): Bitmap {
+        var result = original.copy(Bitmap.Config.ARGB_8888, true)
+
+        if (formula.globalIntensity > 0.001f) {
+            result = applyFormula(result, formula)
         }
 
-        val hasCurves = formula.curvePointsW.any { it.x != it.y } ||
-                formula.curvePointsR.any { it.x != it.y } ||
-                formula.curvePointsG.any { it.x != it.y } ||
-                formula.curvePointsB.any { it.x != it.y }
-        if (hasCurves) {
-            pipeline.addStage(
-                CurvesFilter(
-                    wPoints = formula.curvePointsW,
-                    rPoints = formula.curvePointsR,
-                    gPoints = formula.curvePointsG,
-                    bPoints = formula.curvePointsB
-                ),
-                formula.curvesIntensity
-            )
+        if (lut.lutData.isNotEmpty() && lut.intensity > 0.001f) {
+            result = LutApplier.applyLut(result, lut.lutData, lut.lutSize, lut.intensity)
         }
 
-        if (hasAdjustment(formula.saturation) || hasAdjustment(formula.colorTemperature) ||
-            hasAdjustment(formula.tint)
-        ) {
-            pipeline.addStage(
-                ColorAdjustFilter(
-                    saturation = formula.saturation,
-                    colorTemperature = formula.colorTemperature,
-                    tint = formula.tint
-                ),
-                formula.colorIntensity
-            )
+        result = WatermarkRenderer.render(result, watermark)
+
+        return result
+    }
+
+    private fun applyFormula(input: Bitmap, formula: ColorFormula): Bitmap {
+        val pipeline = FilterPipeline()
+
+        if (needsBrightness(formula)) {
+            pipeline.addStage(BrightnessFilter(
+                formula.exposure, formula.contrast,
+                formula.highlights, formula.shadows
+            ), formula.brightnessIntensity)
         }
 
-        if (hasAdjustment(formula.redHue) || hasAdjustment(formula.redSaturation) ||
-            hasAdjustment(formula.greenHue) || hasAdjustment(formula.greenSaturation) ||
-            hasAdjustment(formula.blueHue) || hasAdjustment(formula.blueSaturation)
-        ) {
-            pipeline.addStage(
-                RGBAdjustFilter(
-                    redHue = formula.redHue,
-                    redSaturation = formula.redSaturation,
-                    greenHue = formula.greenHue,
-                    greenSaturation = formula.greenSaturation,
-                    blueHue = formula.blueHue,
-                    blueSaturation = formula.blueSaturation
-                ),
-                formula.rgbIntensity
-            )
+        if (needsCurves(formula)) {
+            pipeline.addStage(CurvesFilter(
+                formula.curvePointsW, formula.curvePointsR,
+                formula.curvePointsG, formula.curvePointsB
+            ), formula.curvesIntensity)
         }
 
-        if (hasAdjustment(formula.lchLightness) || hasAdjustment(formula.lchChroma) ||
-            hasAdjustment(formula.lchHue)
-        ) {
-            pipeline.addStage(
-                LCHAdjustFilter(
-                    lightness = formula.lchLightness,
-                    chroma = formula.lchChroma,
-                    hue = formula.lchHue
-                ),
-                formula.lchIntensity
-            )
+        if (needsColor(formula)) {
+            pipeline.addStage(ColorAdjustFilter(
+                formula.saturation, formula.colorTemperature, formula.tint
+            ), formula.colorIntensity)
+        }
+
+        if (needsRgb(formula)) {
+            pipeline.addStage(RGBAdjustFilter(
+                formula.redHue, formula.redSaturation,
+                formula.greenHue, formula.greenSaturation,
+                formula.blueHue, formula.blueSaturation
+            ), formula.rgbIntensity)
+        }
+
+        if (needsLch(formula)) {
+            pipeline.addStage(LCHAdjustFilter(
+                formula.lchLightness, formula.lchChroma, formula.lchHue
+            ), formula.lchIntensity)
         }
 
         if (formula.fade > 0.001f || formula.silverRetention > 0.001f) {
-            pipeline.addStage(
-                EffectsFilter(
-                    fade = formula.fade,
-                    silverRetention = formula.silverRetention
-                ),
-                formula.effectsIntensity
-            )
+            pipeline.addStage(EffectsFilter(
+                formula.fade, formula.silverRetention
+            ), formula.effectsIntensity)
         }
+
+        return pipeline.process(input, formula.globalIntensity)
     }
 
-    /**
-     * 应用 LUT
-     */
-    fun applyLut(input: Bitmap, lut: LutPreset): Bitmap {
-        return if (lut.lutData.isNotEmpty()) {
-            LutApplier.applyLut(input, lut.lutData, lut.lutSize, lut.intensity)
-        } else {
-            input
-        }
-    }
+    private fun needsBrightness(f: ColorFormula): Boolean =
+        abs(f.exposure) > 0.001f || abs(f.contrast) > 0.001f ||
+        abs(f.highlights) > 0.001f || abs(f.shadows) > 0.001f
 
-    /**
-     * 应用水印相框
-     */
-    fun applyWatermark(input: Bitmap, watermark: WatermarkPreset): Bitmap {
-        return WatermarkRenderer.render(input, watermark)
-    }
+    private fun needsCurves(f: ColorFormula): Boolean =
+        f.curvePointsW.any { abs(it.x - it.y) > 0.001f } ||
+        f.curvePointsR.any { abs(it.x - it.y) > 0.001f } ||
+        f.curvePointsG.any { abs(it.x - it.y) > 0.001f } ||
+        f.curvePointsB.any { abs(it.x - it.y) > 0.001f }
 
-    companion object {
-        fun hasAdjustment(value: Float): Boolean = kotlin.math.abs(value) > 0.001f
-    }
+    private fun needsColor(f: ColorFormula): Boolean =
+        abs(f.saturation) > 0.001f || abs(f.colorTemperature) > 0.001f || abs(f.tint) > 0.001f
+
+    private fun needsRgb(f: ColorFormula): Boolean =
+        abs(f.redHue) > 0.001f || abs(f.redSaturation) > 0.001f ||
+        abs(f.greenHue) > 0.001f || abs(f.greenSaturation) > 0.001f ||
+        abs(f.blueHue) > 0.001f || abs(f.blueSaturation) > 0.001f
+
+    private fun needsLch(f: ColorFormula): Boolean =
+        abs(f.lchLightness) > 0.001f || abs(f.lchChroma) > 0.001f || abs(f.lchHue) > 0.001f
+
+    private fun abs(v: Float) = kotlin.math.abs(v)
 }

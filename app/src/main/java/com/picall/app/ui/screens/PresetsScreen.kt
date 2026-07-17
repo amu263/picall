@@ -24,123 +24,48 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PresetsScreen(
-    onNavigateBack: () -> Unit
-) {
-    val context = LocalContext.current
+fun PresetsScreen(onNavigateBack: () -> Unit) {
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var selectedType by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    val db = remember { PresetDatabase.getInstance(context) }
+    val db = remember { PresetDatabase.getInstance(ctx) }
     val repo = remember { PresetRepository(db) }
+    var type by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
 
-    val allPresets by repo.getAllPresets().collectAsState(initial = emptyList<Preset>())
-
-    val filteredPresets = remember(allPresets, selectedType, searchQuery) {
-        allPresets.filter { it.type == selectedType }
-            .filter { searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true) }
-    }
+    val all by repo.getAllPresets().collectAsState(initial = emptyList())
+    val filtered = all.filter { it.type == type }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("预设管理", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
-                )
+                navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "返回") } }
             )
         }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // 搜索栏
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("搜索预设...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // 类型筛选
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    PresetType.COLOR_FORMULA to "色彩配方",
-                    PresetType.LUT to "LUT",
-                    PresetType.WATERMARK to "水印相框"
-                ).forEach { (type, label) ->
-                    FilterChip(
-                        selected = selectedType == type,
-                        onClick = { selectedType = type },
-                        label = { Text(label) },
-                        leadingIcon = if (selectedType == type) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                        } else null
-                    )
-                }
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(type == PresetType.COLOR_FORMULA, { type = PresetType.COLOR_FORMULA },
+                    label = { Text("色彩配方") }, modifier = Modifier.weight(1f))
+                FilterChip(type == PresetType.LUT, { type = PresetType.LUT },
+                    label = { Text("LUT") }, modifier = Modifier.weight(1f))
+                FilterChip(type == PresetType.WATERMARK, { type = PresetType.WATERMARK },
+                    label = { Text("水印相框") }, modifier = Modifier.weight(1f))
             }
 
-            // 预设列表
-            if (filteredPresets.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+            if (filtered.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Outlined.Bookmarks,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
-                        Text(
-                            "暂无保存的预设",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            "在编辑器中保存的预设将显示在这里",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
+                        Icon(Icons.Outlined.Bookmarks, null, Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                        Text("暂无保存的预设", style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(filteredPresets, key = { it.id }) { preset ->
-                        PresetCard(
-                            preset = preset,
-                            onClick = {},
-                            onDelete = {
-                                scope.launch { repo.deletePreset(preset.id) }
-                            },
-                            onToggleFavorite = {
-                                scope.launch { repo.toggleFavorite(preset.id, !preset.isFavorite) }
-                            }
-                        )
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 4.dp)) {
+                    items(filtered, key = { it.id }) { preset ->
+                        PresetCard(preset, {}, { scope.launch { repo.deletePreset(it.id) } },
+                            { scope.launch { repo.toggleFavorite(preset.id, !preset.isFavorite) } })
                     }
                 }
             }
