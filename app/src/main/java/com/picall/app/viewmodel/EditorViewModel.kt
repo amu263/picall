@@ -21,14 +21,13 @@ data class EditorState(
 
     val colorFormula: ColorFormula = ColorFormula.DEFAULT,
     val lutPreset: LutPreset = LutPreset.DEFAULT,
-    val watermarkPreset: WatermarkPreset = WatermarkPreset.DEFAULT,
 
     val activeTab: EditorTab = EditorTab.COLOR_FORMULA,
     val expandedCategory: String? = null,
     val canUndo: Boolean = false
 )
 
-enum class EditorTab { COLOR_FORMULA, LUT, WATERMARK, PRESETS }
+enum class EditorTab { COLOR_FORMULA, LUT, PRESETS }
 
 class EditorViewModel(
     private val repository: PresetRepository
@@ -41,8 +40,6 @@ class EditorViewModel(
     val colorFormulaPresets: StateFlow<List<Preset>> = repository.getColorFormulas()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val lutPresets: StateFlow<List<Preset>> = repository.getLuts()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val watermarkPresets: StateFlow<List<Preset>> = repository.getWatermarks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val history = mutableListOf<ColorFormula>()
@@ -112,18 +109,6 @@ class EditorViewModel(
         triggerPreview()
     }
 
-    // ── Watermark ──
-
-    fun updateWatermark(transform: WatermarkPreset.() -> WatermarkPreset) {
-        _state.update { it.copy(watermarkPreset = it.watermarkPreset.transform()) }
-        triggerPreview()
-    }
-
-    fun resetWatermark() {
-        _state.update { it.copy(watermarkPreset = WatermarkPreset.DEFAULT) }
-        triggerPreview()
-    }
-
     // ── Presets ──
 
     fun saveColorPreset(name: String) {
@@ -132,10 +117,6 @@ class EditorViewModel(
 
     fun saveLutPreset(name: String) {
         viewModelScope.launch { repository.saveLut(name, _state.value.lutPreset) }
-    }
-
-    fun saveWatermarkPreset(name: String) {
-        viewModelScope.launch { repository.saveWatermark(name, _state.value.watermarkPreset) }
     }
 
     fun loadPreset(preset: Preset) {
@@ -149,10 +130,7 @@ class EditorViewModel(
                     _state.update { s -> s.copy(lutPreset = it) }
                     triggerPreview()
                 }
-                PresetType.WATERMARK -> preset.toWatermarkPreset()?.let {
-                    _state.update { s -> s.copy(watermarkPreset = it) }
-                    triggerPreview()
-                }
+                else -> {}
             }
         }
     }
@@ -169,7 +147,7 @@ class EditorViewModel(
         _state.update { it.copy(isExporting = true) }
         return try {
             withContext(Dispatchers.Default) {
-                processor.processExport(original, s.colorFormula, s.lutPreset, s.watermarkPreset, s.sourceUri)
+                processor.processExport(original, s.colorFormula, s.lutPreset, WatermarkPreset.DEFAULT, s.sourceUri)
             }
         } finally {
             _state.update { it.copy(isExporting = false) }
@@ -187,7 +165,7 @@ class EditorViewModel(
             _state.update { it.copy(isProcessing = true) }
 
             val result = withContext(Dispatchers.Default) {
-                processor.processPreview(original, s.colorFormula, s.lutPreset, s.watermarkPreset, s.sourceUri)
+                processor.processPreview(original, s.colorFormula, s.lutPreset, WatermarkPreset.DEFAULT, s.sourceUri)
             }
 
             val old = _state.value.previewBitmap
