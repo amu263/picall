@@ -114,7 +114,6 @@ class EditorViewModel(
     fun savePreset(name: String) {
         viewModelScope.launch {
             val s = _state.value
-            // save as color formula (includes LUT ref for combined presets)
             repository.saveColorFormula(name, s.colorFormula, s.lutPreset.lutData)
         }
     }
@@ -123,10 +122,9 @@ class EditorViewModel(
         viewModelScope.launch {
             preset.toColorFormula()?.let { formula ->
                 _state.update { s -> s.copy(colorFormula = formula) }
-                // also load associated LUT if present in the preset's extra data
-                if (preset.thumbnailPath.isNotEmpty()) {
-                    val lut = LutPreset(lutData = preset.thumbnailPath, intensity = 1f)
-                    _state.update { s -> s.copy(lutPreset = lut) }
+                val lutData = preset.thumbnailPath
+                if (lutData.isNotEmpty()) {
+                    _state.update { s -> s.copy(lutPreset = LutPreset(lutData = lutData, intensity = 1f, name = "Preset LUT")) }
                 }
                 triggerPreview()
             }
