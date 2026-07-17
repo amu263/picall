@@ -5,7 +5,11 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,7 +46,6 @@ import com.picall.app.data.model.*
 import com.picall.app.data.repository.PresetRepository
 import com.picall.app.ui.components.AdjustmentSlider
 import com.picall.app.ui.components.BidirectionalSlider
-import com.picall.app.ui.components.BUILTIN_FILM_PRESETS
 import com.picall.app.ui.components.FilmRollCard
 import com.picall.app.ui.components.FilterCategoryCard
 import com.picall.app.ui.components.FilmPresetItem
@@ -160,10 +163,11 @@ fun EditorScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    if (presetName.isNotBlank()) {
-                        vm.savePreset(presetName)
-                        presetName = ""; showSaveDialog = false
-                        Toast.makeText(ctx, "已保存", Toast.LENGTH_SHORT).show()
+                    if (presetName.isNotBlank() && presetName.length <= 8) {
+                        vm.savePreset(presetName) { success, msg ->
+                            Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+                            if (success) { presetName = ""; showSaveDialog = false }
+                        }
                     }
                 }, colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
                     Text("保存")
@@ -185,7 +189,9 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
 
     Column(modifier) {
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
-            if (bitmap != null) {
+            AnimatedContent(targetState = bitmap, transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "preview") { bmp ->
+                if (bmp != null) {
                 Image(bitmap.asImageBitmap(), "预览", Modifier
                     .fillMaxSize()
                     .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
@@ -201,6 +207,7 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
                 CircularProgressIndicator(Modifier.size(28.dp).align(Alignment.TopEnd).padding(12.dp),
                     color = SliderActive, strokeWidth = 2.dp)
             }
+            } // AnimatedContent
         }
         HistogramView(bitmap, Modifier.fillMaxWidth())
     }
@@ -213,6 +220,7 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
     val f = s.colorFormula
     val lut = s.lutPreset
     var selectedFilmId by remember { mutableStateOf("none") }
+    val allPresets by vm.allFilmPresets.collectAsState()
 
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
         // Film strip
@@ -223,14 +231,19 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
             contentPadding = PaddingValues(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(BUILTIN_FILM_PRESETS.size) { index ->
-                val preset = BUILTIN_FILM_PRESETS[index]
+            items(allPresets.size) { index ->
+                val preset = allPresets[index]
                 FilmRollCard(
                     item = preset,
                     isSelected = selectedFilmId == preset.id,
                     onClick = {
                         selectedFilmId = preset.id
-                        vm.selectFilmPreset(preset.formula, preset.id)
+                        when (preset.type) {
+                            PresetType.LUT -> {
+                                vm.importLutFromBase64(preset.lutData, preset.name)
+                            }
+                            else -> vm.selectFilmPreset(preset.formula, preset.id)
+                        }
                     }
                 )
             }

@@ -42,6 +42,32 @@ class EditorViewModel(
     val lutPresets: StateFlow<List<Preset>> = repository.getLuts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Merged film presets: builtin + custom from Room
+    val allFilmPresets: StateFlow<List<com.picall.app.ui.components.FilmPresetItem>> = combine(
+        colorFormulaPresets, lutPresets
+    ) { colorPresets, luts ->
+        val items = mutableListOf<com.picall.app.ui.components.FilmPresetItem>()
+        // Built-in presets
+        items.addAll(com.picall.app.ui.components.BUILTIN_FILM_PRESETS)
+        // Custom color presets
+        for (p in colorPresets) {
+            val f = p.toColorFormula() ?: continue
+            items.add(com.picall.app.ui.components.FilmPresetItem(
+                id = "custom_${p.id}", name = p.name, formula = f,
+                type = PresetType.COLOR_FORMULA, lutData = p.thumbnailPath, isBuiltin = false
+            ))
+        }
+        // LUT presets
+        for (p in luts) {
+            val lut = p.toLutPreset() ?: continue
+            items.add(com.picall.app.ui.components.FilmPresetItem(
+                id = "lut_${p.id}", name = p.name, formula = ColorFormula.DEFAULT,
+                type = PresetType.LUT, lutData = lut.lutData, isBuiltin = false
+            ))
+        }
+        items
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val history = mutableListOf<ColorFormula>()
     private var previewJob: Job? = null
 
@@ -123,23 +149,56 @@ class EditorViewModel(
         triggerPreview()
     }
 
+    fun importLutFromBase64(data: String, name: String) {
+        _state.update { it.copy(lutPreset = LutPreset(lutData = data, name = name, intensity = 1f)) }
+        triggerPreview()
+    }
+
     // ── Presets ──
 
-    fun savePreset(name: String) {
-        viewModelScope.launch {
+    private val _presetSaveResult = MutableStateFlow<String?>(null)
+    val presetSaveResult: StateFlow<String?> = _presetSaveResult.asStateFlow()
+
+    fun savePreset(name: String, onResult: ((Boolean, String) -> Unit)? = null) {
+        viewModelScope.launch(Dispatchers.IO) {
             val s = _state.value
-            repository.saveColorFormula(name, s.colorFormula, s.lutPreset.lutData)
+            // Check duplicate name
+            val existing = repository.getAllPresets().first().any { it.name == name }
+            if (existing) {
+                withContext(Dispatchers.Main) { onResult?.invoke(false, "预设名称已存在") }
+                return@launch
+            }
+            // Pack LUT data with formula JSON
+            val lutData = s.lutPreset.lutData
+            // Generate thumbnail
+            val thumb = com.picall.app.ui.components.generateThumbnailBitmap(s.colorFormula, name)
+            val thumbPath = saveThumbnailToFile(thumb, name)
+            // Save
+            repository.saveColorFormula(name, s.colorFormula, lutData, thumbPath ?: "")
+            withContext(Dispatchers.Main) { onResult?.invoke(true, "预设已保存") }
         }
+    }
+
+    private fun saveThumbnailToFile(bitmap: Bitmap, name: String): String? {
+        return try {
+            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_PICTURES), "Picall/Presets/Thumbnails")
+            dir.mkdirs()
+            val file = java.io.File(dir, "${name}_${System.currentTimeMillis()}.png")
+            java.io.FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
+            file.absolutePath
+        } catch (_: Exception) { null }
     }
 
     fun loadPreset(preset: Preset) {
         viewModelScope.launch {
             preset.toColorFormula()?.let { formula ->
-                _state.update { s -> s.copy(colorFormula = formula) }
                 val lutData = preset.thumbnailPath
-                if (lutData.isNotEmpty()) {
-                    _state.update { s -> s.copy(lutPreset = LutPreset(lutData = lutData, intensity = 1f, name = "Preset LUT")) }
-                }
+                _state.update { s -> s.copy(
+                    colorFormula = formula,
+                    lutPreset = if (lutData.isNotEmpty()) LutPreset(lutData = lutData, intensity = 1f, name = preset.name)
+                                else LutPreset.DEFAULT
+                )}
                 triggerPreview()
             }
         }
