@@ -35,7 +35,7 @@ fun PresetsScreen(
     val db = remember { PresetDatabase.getInstance(context) }
     val repo = remember { PresetRepository(db) }
 
-    val allPresets by repo.getAllPresets().collectAsState(initial = emptyList())
+    val allPresets by repo.getAllPresets().collectAsState(initial = emptyList<Preset>())
 
     val filteredPresets = remember(allPresets, selectedType, searchQuery) {
         allPresets.filter { it.type == selectedType }

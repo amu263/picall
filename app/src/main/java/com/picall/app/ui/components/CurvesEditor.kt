@@ -34,7 +34,7 @@ fun CurvesEditor(
     lineColor: Color = CurveLine,
     gridColor: Color = CurveGrid
 ) {
-    var selectedPointIndex by remember { mutableIntStateOf(-1) }
+    var selectedPointIndex by remember { mutableStateOf(-1) }
     val sortedPoints = remember(points) { points.sortedBy { it.x } }
 
     Column(modifier = modifier) {
