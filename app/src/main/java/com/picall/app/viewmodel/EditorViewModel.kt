@@ -81,7 +81,21 @@ class EditorViewModel(
 
     fun resetFormula() {
         history.add(_state.value.colorFormula)
-        _state.update { it.copy(colorFormula = ColorFormula.DEFAULT, canUndo = true) }
+        _state.update { it.copy(colorFormula = ColorFormula.DEFAULT, lutPreset = LutPreset.DEFAULT, canUndo = true) }
+        triggerPreview()
+    }
+
+    fun selectFilmPreset(formula: ColorFormula, presetId: String) {
+        if (presetId == "none") {
+            // Hard reset: force all params to zero, clear LUT
+            _state.update { it.copy(
+                colorFormula = ColorFormula.DEFAULT,
+                lutPreset = LutPreset.DEFAULT,
+                canUndo = true
+            )}
+        } else {
+            _state.update { it.copy(colorFormula = formula) }
+        }
         triggerPreview()
     }
 
@@ -155,7 +169,7 @@ class EditorViewModel(
     private fun triggerPreview() {
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            delay(80)
+            delay(300) // 300ms debounce
             val s = _state.value
             val original = s.originalBitmap ?: return@launch
             _state.update { it.copy(isProcessing = true) }

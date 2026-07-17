@@ -12,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,12 +42,12 @@ import com.picall.app.data.model.*
 import com.picall.app.data.repository.PresetRepository
 import com.picall.app.ui.components.AdjustmentSlider
 import com.picall.app.ui.components.BidirectionalSlider
+import com.picall.app.ui.components.BUILTIN_FILM_PRESETS
+import com.picall.app.ui.components.FilmRollCard
 import com.picall.app.ui.components.FilterCategoryCard
-import com.picall.app.ui.components.FilmStripRow
+import com.picall.app.ui.components.FilmPresetItem
 import com.picall.app.ui.components.HistogramView
 import com.picall.app.ui.components.PresetCard
-import com.picall.app.ui.components.defaultFilmPresets
-import com.picall.app.ui.components.FilmPreset
 import com.picall.app.ui.theme.*
 import com.picall.app.viewmodel.EditorState
 import com.picall.app.viewmodel.EditorTab
@@ -210,23 +212,30 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
 private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit, onPickLut: () -> Unit, modifier: Modifier = Modifier) {
     val f = s.colorFormula
     val lut = s.lutPreset
-
-    val filmPresets = remember { defaultFilmPresets() }
-    var selectedFilmIndex by remember { mutableStateOf(0) }
+    var selectedFilmId by remember { mutableStateOf("none") }
 
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
         // Film strip
-        FilmStripRow(
-            presets = filmPresets,
-            selectedIndex = selectedFilmIndex,
-            onSelect = { idx ->
-                selectedFilmIndex = idx
-                val preset = filmPresets[idx]
-                if (preset.name != "无") {
-                    vm.updateFormula { preset.formula }
-                }
+        Text("胶片预设", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(BUILTIN_FILM_PRESETS.size) { index ->
+                val preset = BUILTIN_FILM_PRESETS[index]
+                FilmRollCard(
+                    item = preset,
+                    isSelected = selectedFilmId == preset.id,
+                    onClick = {
+                        selectedFilmId = preset.id
+                        vm.selectFilmPreset(preset.formula, preset.id)
+                    }
+                )
             }
-        )
+            item { Spacer(Modifier.width(4.dp)) }
+        }
 
         // LUT card
         Card(shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
