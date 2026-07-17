@@ -12,6 +12,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -375,28 +378,58 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
 private fun PresetsTab(vm: EditorViewModel, modifier: Modifier = Modifier) {
     val colorP by vm.colorFormulaPresets.collectAsState()
     val lutP by vm.lutPresets.collectAsState()
-    var type by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
+
+    val allPresets = remember(colorP, lutP) {
+        (colorP + lutP).sortedByDescending { it.updatedAt }
+    }
 
     Column(modifier) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(type == PresetType.COLOR_FORMULA, { type = PresetType.COLOR_FORMULA },
-                label = { Text("色彩", fontSize = 12.sp) }, modifier = Modifier.weight(1f))
-            FilterChip(type == PresetType.LUT, { type = PresetType.LUT },
-                label = { Text("LUT", fontSize = 12.sp) }, modifier = Modifier.weight(1f))
-        }
-        val list = when (type) {
-            PresetType.COLOR_FORMULA -> colorP
-            PresetType.LUT -> lutP
-            else -> emptyList()
-        }
-        if (list.isEmpty()) {
+        if (allPresets.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("暂无预设", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Outlined.Bookmarks, null, Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                    Spacer(Modifier.height(8.dp))
+                    Text("暂无预设", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("保存后出现在这里", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                }
             }
         } else {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                list.forEach { p ->
-                    PresetCard(p, { vm.loadPreset(p) }, { vm.deletePreset(p.id) })
+            LazyVerticalGrid(columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(allPresets, key = { it.id }) { preset ->
+                    val typeLabel = when (preset.type) {
+                        PresetType.COLOR_FORMULA -> if (preset.thumbnailPath.isNotEmpty()) "含LUT" else "色彩配方"
+                        PresetType.LUT -> "3D LUT"
+                        else -> "预设"
+                    }
+                    Card(shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                        onClick = { vm.loadPreset(preset) }
+                    ) {
+                        Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.fillMaxWidth().height(80.dp).clip(RoundedCornerShape(6.dp))
+                                .background(SliderActive.copy(alpha = 0.06f)),
+                                contentAlignment = Alignment.Center) {
+                                Icon(if (preset.type == PresetType.LUT) Icons.Outlined.Gradient else Icons.Outlined.Palette,
+                                    null, Modifier.size(28.dp), tint = SliderActive.copy(alpha = 0.3f))
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(preset.name, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(typeLabel, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(2.dp))
+                            TextButton({ vm.deletePreset(preset.id) },
+                                Modifier.fillMaxWidth(), contentPadding = PaddingValues(2.dp)) {
+                                Text("删除", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                            }
+                        }
+                    }
                 }
             }
         }
