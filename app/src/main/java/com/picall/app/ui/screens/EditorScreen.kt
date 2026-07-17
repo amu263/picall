@@ -159,11 +159,10 @@ fun EditorScreen(
             confirmButton = {
                 Button(onClick = {
                     if (presetName.isNotBlank()) {
-                        when (s.activeTab) {
-                            EditorTab.COLOR_FORMULA -> vm.saveColorPreset(presetName)
-                            EditorTab.LUT -> vm.saveLutPreset(presetName)
-                            EditorTab.WATERMARK -> vm.saveWatermarkPreset(presetName)
-                            else -> {}
+                            when (s.activeTab) {
+                                EditorTab.COLOR_FORMULA -> vm.saveColorPreset(presetName)
+                                EditorTab.LUT -> vm.saveLutPreset(presetName)
+                                else -> {}
                         }
                         presetName = ""; showSaveDialog = false
                         Toast.makeText(ctx, "已保存", Toast.LENGTH_SHORT).show()
@@ -347,7 +346,6 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, on
 private fun PresetsTab(vm: EditorViewModel, modifier: Modifier = Modifier) {
     val colorP by vm.colorFormulaPresets.collectAsState()
     val lutP by vm.lutPresets.collectAsState()
-    val wmP by vm.watermarkPresets.collectAsState()
     var type by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
 
     Column(modifier) {
@@ -360,7 +358,7 @@ private fun PresetsTab(vm: EditorViewModel, modifier: Modifier = Modifier) {
         val list = when (type) {
             PresetType.COLOR_FORMULA -> colorP
             PresetType.LUT -> lutP
-            PresetType.WATERMARK -> wmP
+            else -> emptyList()
         }
         if (list.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
