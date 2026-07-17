@@ -57,9 +57,9 @@ object LutApplier {
             val bNew = b + (sampledRgb[2] - b) * intensity
 
             pixels[i] = (a shl 24) or
-                    (rNew.toInt().coerceIn(0, 255) shl 16) or
-                    (gNew.toInt().coerceIn(0, 255) shl 8) or
-                    bNew.toInt().coerceIn(0, 255)
+                    ((rNew * 255f).toInt().coerceIn(0, 255) shl 16) or
+                    ((gNew * 255f).toInt().coerceIn(0, 255) shl 8) or
+                    (bNew * 255f).toInt().coerceIn(0, 255)
         }
 
         out.setPixels(pixels, 0, w, 0, 0, w, h)

@@ -39,6 +39,7 @@ import com.picall.app.data.repository.PresetRepository
 import com.picall.app.ui.components.AdjustmentSlider
 import com.picall.app.ui.components.BidirectionalSlider
 import com.picall.app.ui.components.FilterCategoryCard
+import com.picall.app.ui.components.HistogramView
 import com.picall.app.ui.components.PresetCard
 import com.picall.app.ui.theme.*
 import com.picall.app.viewmodel.EditorState
@@ -186,7 +187,8 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    Box(modifier.background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
+    Column(modifier) {
+        Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             Image(bitmap.asImageBitmap(), "预览", Modifier
                 .fillMaxSize()
@@ -378,9 +380,10 @@ private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -
                             .clickable { vm.updateWatermark { copy(position = pos) } },
                             contentAlignment = Alignment.Center) {
                             Text(posSymbol(pos), style = MaterialTheme.typography.titleMedium)
-                        }
-                    }
-                }
+        }
+        HistogramView(bitmap, Modifier.fillMaxWidth())
+    }
+}
             }
         }
 
