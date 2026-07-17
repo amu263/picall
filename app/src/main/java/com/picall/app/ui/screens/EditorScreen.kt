@@ -136,13 +136,13 @@ fun EditorScreen(
             EmptyState(onPick = { imgPicker.launch("image/*") })
         } else {
             Column(Modifier.fillMaxSize().padding(pad)) {
-                PreviewArea(s.previewBitmap, s.isProcessing)
+                PreviewArea(s.previewBitmap, s.isProcessing, Modifier.weight(1f).fillMaxWidth())
                 Spacer(Modifier.height(4.dp))
                 when (s.activeTab) {
-                    EditorTab.COLOR_FORMULA -> FormulaPanel(s, vm, { showSaveDialog = true })
-                    EditorTab.LUT -> LutTab(s, vm, { lutPicker.launch("*/*") }, { showSaveDialog = true })
-                    EditorTab.WATERMARK -> WatermarkTab(s, vm, { showSaveDialog = true })
-                    EditorTab.PRESETS -> PresetsTab(vm)
+                    EditorTab.COLOR_FORMULA -> FormulaPanel(s, vm, { showSaveDialog = true }, Modifier.weight(1f))
+                    EditorTab.LUT -> LutTab(s, vm, { lutPicker.launch("*/*") }, { showSaveDialog = true }, Modifier.weight(1f))
+                    EditorTab.WATERMARK -> WatermarkTab(s, vm, { showSaveDialog = true }, Modifier.weight(1f))
+                    EditorTab.PRESETS -> PresetsTab(vm, Modifier.weight(1f))
                 }
             }
         }
@@ -182,11 +182,11 @@ fun EditorScreen(
 // ═══ Preview ═══
 
 @Composable
-private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean) {
+private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean, modifier: Modifier = Modifier) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
-    Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
+    Box(modifier.background(Color(0xFF111111)), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             Image(bitmap.asImageBitmap(), "预览", Modifier
                 .fillMaxSize()
@@ -209,14 +209,14 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean)
 // ═══ Color Formula Panel ═══
 
 @Composable
-private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit) {
+private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit, modifier: Modifier = Modifier) {
     val f = s.colorFormula
-    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
+    Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
         // Global intensity
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("配方总强度", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(80.dp))
             Slider(f.globalIntensity, { vm.updateFormula { copy(globalIntensity = it) } },
-                0f..1f, Modifier.weight(1f).height(20.dp),
+                valueRange = 0f..1f, modifier = Modifier.weight(1f).height(20.dp),
                 colors = SliderDefaults.colors(thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack))
             Text("${(f.globalIntensity * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(36.dp))
         }
@@ -264,8 +264,8 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
         // Effects
         FilterCategoryCard("效果", s.expandedCategory == "effects", { vm.toggleCategory("effects") }, f.effectsIntensity,
             { vm.updateFormula { copy(effectsIntensity = it) } }) {
-            AdjustmentSlider("褪色", f.fade, { vm.updateFormula { copy(fade = it) } }, 0f..1f, "${(f.fade * 100).toInt()}%")
-            AdjustmentSlider("留银冲洗", f.silverRetention, { vm.updateFormula { copy(silverRetention = it) } }, 0f..1f, "${(f.silverRetention * 100).toInt()}%")
+            AdjustmentSlider("褪色", f.fade, { vm.updateFormula { copy(fade = it) } }, valueRange = 0f..1f, displayValue = "${(f.fade * 100).toInt()}%")
+            AdjustmentSlider("留银冲洗", f.silverRetention, { vm.updateFormula { copy(silverRetention = it) } }, valueRange = 0f..1f, displayValue = "${(f.silverRetention * 100).toInt()}%")
         }
 
         // Buttons
@@ -288,9 +288,9 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
 // ═══ LUT Tab ═══
 
 @Composable
-private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, onSavePreset: () -> Unit) {
+private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, onSavePreset: () -> Unit, modifier: Modifier = Modifier) {
     val lut = s.lutPreset
-    Column(Modifier.weight(1f).padding(16.dp)) {
+    Column(modifier.padding(16.dp)) {
         if (lut.lutData.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -319,7 +319,7 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, on
                     }
                     Spacer(Modifier.height(12.dp))
                     Text("强度 ${(lut.intensity * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
-                    Slider(lut.intensity, { vm.setLutIntensity(it) }, 0f..1f, Modifier.height(24.dp),
+                    Slider(lut.intensity, { vm.setLutIntensity(it) }, valueRange = 0f..1f, modifier = Modifier.height(24.dp),
                         colors = SliderDefaults.colors(thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack))
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton({ vm.removeLut() }, Modifier.fillMaxWidth()) {
@@ -341,13 +341,13 @@ private fun LutTab(s: EditorState, vm: EditorViewModel, onImport: () -> Unit, on
 // ═══ Watermark Tab ═══
 
 @Composable
-private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit) {
+private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit, modifier: Modifier = Modifier) {
     val w = s.watermarkPreset
-    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+    Column(modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("不透明度", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(72.dp))
-            Slider(w.globalIntensity, { vm.updateWatermark { copy(globalIntensity = it) } }, 0f..1f,
-                Modifier.weight(1f).height(20.dp),
+            Slider(w.globalIntensity, { vm.updateWatermark { copy(globalIntensity = it) } }, valueRange = 0f..1f,
+                modifier = Modifier.weight(1f).height(20.dp),
                 colors = SliderDefaults.colors(thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack))
             Text("${(w.globalIntensity * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(36.dp))
         }
@@ -360,7 +360,7 @@ private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -
                 maxLines = 3, shape = RoundedCornerShape(8.dp))
             Spacer(Modifier.height(8.dp))
             AdjustmentSlider("字体大小", w.fontSize / 72f, { vm.updateWatermark { copy(fontSize = it * 72f) } },
-                0.1f..1f, "${w.fontSize.toInt()}sp")
+                valueRange = 0.1f..1f, displayValue = "${w.fontSize.toInt()}sp")
         }
 
         // Position
@@ -413,13 +413,13 @@ private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -
 // ═══ Presets Tab ═══
 
 @Composable
-private fun PresetsTab(vm: EditorViewModel) {
+private fun PresetsTab(vm: EditorViewModel, modifier: Modifier = Modifier) {
     val colorP by vm.colorFormulaPresets.collectAsState()
     val lutP by vm.lutPresets.collectAsState()
     val wmP by vm.watermarkPresets.collectAsState()
     var type by remember { mutableStateOf(PresetType.COLOR_FORMULA) }
 
-    Column(Modifier.weight(1f)) {
+    Column(modifier) {
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(type == PresetType.COLOR_FORMULA, { type = PresetType.COLOR_FORMULA },
                 label = { Text("色彩", fontSize = 12.sp) }, modifier = Modifier.weight(1f))
