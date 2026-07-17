@@ -78,7 +78,7 @@ fun SettingsScreen(
             )
 
             SettingsItem(
-                icon = Icons.Outlined.Watermark,
+                icon = Icons.Outlined.Brush,
                 title = "保留EXIF信息",
                 subtitle = "导出时保留原始照片的EXIF数据",
                 trailing = {

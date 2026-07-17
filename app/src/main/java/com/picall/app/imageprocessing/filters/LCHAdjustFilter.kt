@@ -90,12 +90,12 @@ class LCHAdjustFilter(
 
             // LCH → CIELAB
             val aNew = cNew * Math.cos(hRad).toFloat()
-            val bNew = cNew * Math.sin(hRad).toFloat()
+            val bLabNew = cNew * Math.sin(hRad).toFloat()
 
             // CIELAB → XYZ
             val fyNew = (lNew + 16f) / 116f
             val fxNew = aNew / 500f + fyNew
-            val fzNew = fyNew - bNew / 200f
+            val fzNew = fyNew - bLabNew / 200f
 
             val xNew = labFInv(fxNew) * REF_X
             val yNew = labFInv(fyNew) * REF_Y

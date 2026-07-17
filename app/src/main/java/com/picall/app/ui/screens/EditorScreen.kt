@@ -171,7 +171,8 @@ fun EditorScreen(
                         formula = editorState.colorFormula,
                         expandedCategory = editorState.expandedCategory,
                         onToggleCategory = { vm.toggleCategory(it) },
-                        onUpdate = { vm.updateColorFormula(it) }
+                        onUpdate = { vm.updateColorFormula(it) },
+                        onSavePreset = { showSaveDialog = true }
                     )
                     EditorTab.LUT -> LutPanel(
                         lutPreset = editorState.lutPreset,
@@ -484,7 +485,8 @@ private fun ColorFormulaPanel(
     formula: ColorFormula,
     expandedCategory: String?,
     onToggleCategory: (String) -> Unit,
-    onUpdate: (ColorFormula.() -> ColorFormula) -> Unit
+    onUpdate: (ColorFormula.() -> ColorFormula) -> Unit,
+    onSavePreset: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -505,7 +507,7 @@ private fun ColorFormulaPanel(
                 value = formula.globalIntensity,
                 onValueChange = { onUpdate { copy(globalIntensity = it) } },
                 valueRange = 0f..1f,
-                modifier = Modifier.weight(1f).height(20.dp),
+                modifier = Modifier.fillMaxWidth().height(20.dp),
                 colors = SliderDefaults.colors(
                     thumbColor = SliderThumb,
                     activeTrackColor = SliderActive,
@@ -668,7 +670,7 @@ private fun ColorFormulaPanel(
             }
 
             Button(
-                onClick = { showSaveDialog = true },
+                onClick = onSavePreset,
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SliderActive)
             ) {
@@ -811,7 +813,7 @@ private fun WatermarkPanel(
                 value = watermark.globalIntensity,
                 onValueChange = { onUpdate { copy(globalIntensity = it) } },
                 valueRange = 0f..1f,
-                modifier = Modifier.weight(1f).height(20.dp),
+                modifier = Modifier.fillMaxWidth().height(20.dp),
                 colors = SliderDefaults.colors(
                     thumbColor = SliderThumb, activeTrackColor = SliderActive, inactiveTrackColor = SliderTrack
                 )

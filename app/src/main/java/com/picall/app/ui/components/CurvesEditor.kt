@@ -108,56 +108,58 @@ fun CurvesEditor(
                     }
                 }
         ) {
-            val canvasWidth = size.width
-            val canvasHeight = size.height
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val canvasWidth = size.width
+                val canvasHeight = size.height
 
-            // 网格线
-            for (i in 1..3) {
-                val x = canvasWidth * i / 4f
-                drawLine(gridColor, Offset(x, 0f), Offset(x, canvasHeight), 1f)
-                val y = canvasHeight * i / 4f
-                drawLine(gridColor, Offset(0f, y), Offset(canvasWidth, y), 1f)
-            }
-
-            // 对角线参考线
-            drawLine(
-                gridColor.copy(alpha = 0.3f),
-                Offset(0f, canvasHeight),
-                Offset(canvasWidth, 0f),
-                1f
-            )
-
-            // 样条曲线
-            if (sortedPoints.size >= 2 && canvasWidth > 0) {
-                val path = Path()
-                for (i in 0 until 256) {
-                    val t = i / 255f
-                    val y = evaluateSpline(sortedPoints, t)
-                    val px = t * canvasWidth
-                    val py = (1f - y) * canvasHeight
-                    if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                // 网格线
+                for (i in 1..3) {
+                    val x = canvasWidth * i / 4f
+                    drawLine(gridColor, Offset(x, 0f), Offset(x, canvasHeight), 1f)
+                    val y = canvasHeight * i / 4f
+                    drawLine(gridColor, Offset(0f, y), Offset(canvasWidth, y), 1f)
                 }
-                drawPath(path, lineColor, style = Stroke(width = 2.5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-            }
 
-            // 控制点
-            sortedPoints.forEachIndexed { index, point ->
-                val cx = point.x * canvasWidth
-                val cy = (1f - point.y) * canvasHeight
-                val isSelected = index == selectedPointIndex
-                val radius = if (isSelected) 10f else 7f
-                val alpha = if (isSelected) 1f else 0.8f
+                // 对角线参考线
+                drawLine(
+                    gridColor.copy(alpha = 0.3f),
+                    Offset(0f, canvasHeight),
+                    Offset(canvasWidth, 0f),
+                    1f
+                )
 
-                drawCircle(
-                    color = CurvePoint.copy(alpha = alpha),
-                    radius = radius + 2f,
-                    center = Offset(cx, cy)
-                )
-                drawCircle(
-                    color = Color.White.copy(alpha = alpha),
-                    radius = radius,
-                    center = Offset(cx, cy)
-                )
+                // 样条曲线
+                if (sortedPoints.size >= 2 && canvasWidth > 0) {
+                    val path = Path()
+                    for (i in 0 until 256) {
+                        val t = i / 255f
+                        val y = evaluateSpline(sortedPoints, t)
+                        val px = t * canvasWidth
+                        val py = (1f - y) * canvasHeight
+                        if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+                    }
+                    drawPath(path, lineColor, style = Stroke(width = 2.5f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                }
+
+                // 控制点
+                sortedPoints.forEachIndexed { index, point ->
+                    val cx = point.x * canvasWidth
+                    val cy = (1f - point.y) * canvasHeight
+                    val isSelected = index == selectedPointIndex
+                    val radius = if (isSelected) 10f else 7f
+                    val alpha = if (isSelected) 1f else 0.8f
+
+                    drawCircle(
+                        color = SliderActive.copy(alpha = alpha),
+                        radius = radius + 2f,
+                        center = Offset(cx, cy)
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = alpha),
+                        radius = radius,
+                        center = Offset(cx, cy)
+                    )
+                }
             }
         }
 
@@ -212,8 +214,4 @@ private fun evaluateSpline(points: List<CurvePoint>, t: Float): Float {
     )
 
     return result.coerceIn(0f, 1f)
-}
-
-private fun DrawScope.drawLine(color: Color, start: Offset, end: Offset, width: Float) {
-    drawLine(color, start, end, width)
 }
