@@ -382,10 +382,9 @@ private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -
                             .clickable { vm.updateWatermark { copy(position = pos) } },
                             contentAlignment = Alignment.Center) {
                             Text(posSymbol(pos), style = MaterialTheme.typography.titleMedium)
-        }
-        HistogramView(bitmap, Modifier.fillMaxWidth())
-    }
-}
+                        }
+                    }
+                }
             }
         }
 
