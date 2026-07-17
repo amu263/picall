@@ -64,7 +64,7 @@ fun PresetsScreen(onNavigateBack: () -> Unit) {
             } else {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 4.dp)) {
                     items(filtered, key = { it.id }) { preset ->
-                        PresetCard(preset, {}, { scope.launch { repo.deletePreset(it.id) } },
+                        PresetCard(preset, {}, { scope.launch { repo.deletePreset(preset.id) } },
                             { scope.launch { repo.toggleFavorite(preset.id, !preset.isFavorite) } })
                     }
                 }
