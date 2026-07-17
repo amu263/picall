@@ -41,8 +41,11 @@ import com.picall.app.data.repository.PresetRepository
 import com.picall.app.ui.components.AdjustmentSlider
 import com.picall.app.ui.components.BidirectionalSlider
 import com.picall.app.ui.components.FilterCategoryCard
+import com.picall.app.ui.components.FilmStripRow
 import com.picall.app.ui.components.HistogramView
 import com.picall.app.ui.components.PresetCard
+import com.picall.app.ui.components.defaultFilmPresets
+import com.picall.app.ui.components.FilmPreset
 import com.picall.app.ui.theme.*
 import com.picall.app.viewmodel.EditorState
 import com.picall.app.viewmodel.EditorTab
@@ -150,7 +153,7 @@ fun EditorScreen(
             onDismissRequest = { showSaveDialog = false; presetName = "" },
             title = { Text("保存预设") },
             text = {
-                OutlinedTextField(presetName, { presetName = it }, label = { Text("预设名称") },
+                OutlinedTextField(presetName, { if (it.length <= 8) presetName = it }, label = { Text("预设名称 (最多8字)") },
                     singleLine = true, modifier = Modifier.fillMaxWidth())
             },
             confirmButton = {
@@ -207,8 +210,25 @@ private fun PreviewArea(bitmap: android.graphics.Bitmap?, isProcessing: Boolean,
 private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -> Unit, onPickLut: () -> Unit, modifier: Modifier = Modifier) {
     val f = s.colorFormula
     val lut = s.lutPreset
+
+    val filmPresets = remember { defaultFilmPresets() }
+    var selectedFilmIndex by remember { mutableStateOf(0) }
+
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
-        // LUT selector
+        // Film strip
+        FilmStripRow(
+            presets = filmPresets,
+            selectedIndex = selectedFilmIndex,
+            onSelect = { idx ->
+                selectedFilmIndex = idx
+                val preset = filmPresets[idx]
+                if (preset.name != "无") {
+                    vm.updateFormula { preset.formula }
+                }
+            }
+        )
+
+        // LUT card
         Card(shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         ) {
