@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -93,6 +95,7 @@ fun CurvesEditor(
                 }
             }
         ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
             val cw = size.width; val ch = size.height
 
             // Grid
@@ -126,7 +129,8 @@ fun CurvesEditor(
                 drawRoundRect(Color.Black.copy(alpha = 0.7f), topLeft = Offset(4f, 4f),
                     size = Size(dragValue.length * 8f + 16f, 20f), cornerRadius = CornerRadius(4f))
             }
-        }
+            } // Canvas closes
+        } // Box closes
 
         // Drag value
         if (dragValue.isNotEmpty()) {
