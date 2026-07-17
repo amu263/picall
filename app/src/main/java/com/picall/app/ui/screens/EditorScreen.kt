@@ -491,7 +491,6 @@ private fun ColorFormulaPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(0.55f)
             .verticalScroll(rememberScrollState())
             .padding(bottom = 8.dp)
     ) {
@@ -696,7 +695,6 @@ private fun LutPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(0.55f)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -799,7 +797,6 @@ private fun WatermarkPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(0.55f)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
     ) {
@@ -1022,7 +1019,6 @@ private fun PresetsPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(0.55f)
     ) {
         // 类型切换
         Row(
