@@ -391,14 +391,14 @@ private fun WatermarkTab(s: EditorState, vm: EditorViewModel, onSavePreset: () -
         // Frame
         FilterCategoryCard("相框样式", false, {}, w.frameWidth / 20f, { vm.updateWatermark { copy(frameWidth = it * 20f) } }) {
             val styles = FrameStyle.entries.toList()
-            styles.chunked(3).forEach { row ->
+            styles.chunked(2).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     row.forEach { style ->
                         FilterChip(w.frameStyle == style, { vm.updateWatermark { copy(frameStyle = style) } },
                             label = { Text(frameLabel(style), fontSize = 10.sp) },
                             modifier = Modifier.weight(1f).height(28.dp))
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    if (row.size < 2) Spacer(Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(2.dp))
             }
@@ -490,9 +490,12 @@ private fun posSymbol(pos: WatermarkPosition) = when (pos) {
 }
 
 private fun frameLabel(s: FrameStyle) = when (s) {
-    FrameStyle.NONE -> "无"; FrameStyle.SIMPLE -> "单线框"; FrameStyle.DOUBLE -> "双线框"
-    FrameStyle.FILM_STRIP -> "胶片"; FrameStyle.CLASSIC_MATTE -> "卡纸"
-    FrameStyle.POLAROID -> "拍立得"; FrameStyle.VIGNETTE -> "暗角"; FrameStyle.SHADOW_BORDER -> "阴影"
+    FrameStyle.NONE -> "无"
+    FrameStyle.CLASSIC_MATTE -> "经典留白"
+    FrameStyle.MINIMAL_LINE -> "极简线框"
+    FrameStyle.VIGNETTE -> "暗角光影"
+    FrameStyle.DOUBLE_PRESERVE -> "双框珍藏"
+    FrameStyle.PHOTO_PAPER -> "相纸印记"
 }
 
 private fun saveToGallery(ctx: android.content.Context, bitmap: android.graphics.Bitmap) {

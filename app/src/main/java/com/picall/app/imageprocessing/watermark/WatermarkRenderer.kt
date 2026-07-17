@@ -1,368 +1,192 @@
 package com.picall.app.imageprocessing.watermark
 
 import android.graphics.*
-import android.graphics.Paint.Align
-import androidx.exifinterface.media.ExifInterface
 import com.picall.app.data.model.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * 水印渲染器 — 在图片上绘制自定义水印文字、EXIF 数据和相框
- */
 object WatermarkRenderer {
 
-    private const val DP_SCALE = 3f  // 简化的 dp→px 转换因子
-
     fun render(input: Bitmap, preset: WatermarkPreset): Bitmap {
-        if (preset.globalIntensity < 0.001f && preset.frameStyle == FrameStyle.NONE) {
-            return input
+        if (preset.frameStyle == FrameStyle.NONE && preset.textContent.isEmpty()) return input
+
+        val w = input.width
+        val h = input.height
+        val pad = maxOf((w * 0.04f).toInt(), 12)
+        val radius = (minOf(w, h) * 0.02f).toInt().coerceIn(8, 40)
+
+        val (canvasW, canvasH, imgX, imgY) = when (preset.frameStyle) {
+            FrameStyle.CLASSIC_MATTE -> {
+                val bgPad = maxOf((maxOf(w, h) * 0.06f).toInt(), 24)
+                val bottomBar = if (preset.showExif || preset.textContent.isNotEmpty()) (h * 0.06f).toInt().coerceIn(40, 80) else 0
+                Triple(w + bgPad * 2, h + bgPad * 2 + bottomBar, bgPad, bgPad)
+            }
+            FrameStyle.MINIMAL_LINE -> {
+                val p = maxOf((minOf(w, h) * 0.03f).toInt(), 10)
+                Triple(w + p * 2, h + p * 2, p, p)
+            }
+            FrameStyle.VIGNETTE -> Triple(w, h, 0, 0)
+            FrameStyle.DOUBLE_PRESERVE -> {
+                val p = maxOf((maxOf(w, h) * 0.08f).toInt(), 32)
+                Triple(w + p * 2, h + p * 2, p, p)
+            }
+            FrameStyle.PHOTO_PAPER -> {
+                val side = maxOf((w * 0.05f).toInt(), 16)
+                val bottom = maxOf((h * 0.12f).toInt(), 60)
+                Triple(w + side * 2, h + side + bottom, side, side)
+            }
+            FrameStyle.NONE -> Triple(w, h, 0, 0)
         }
 
-        val padding = (preset.framePadding * DP_SCALE).toInt()
-        val frameWidth = (preset.frameWidth * DP_SCALE).toInt()
-
-        // 计算输出画布大小 (包含相框)
-        val totalWidth = input.width + padding * 2 + frameWidth * 2
-        val totalHeight = input.height + padding * 2 + frameWidth * 2
-
-        val output = Bitmap.createBitmap(totalWidth, totalHeight, Bitmap.Config.ARGB_8888)
+        val output = Bitmap.createBitmap(canvasW, canvasH, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
 
-        // 相框背景
-        drawFrameBackground(canvas, totalWidth, totalHeight, preset)
-
-        // 绘制相框
-        drawFrame(canvas, totalWidth, totalHeight, padding, frameWidth, preset)
-
-        // 绘制图片
-        val imageX = padding + frameWidth
-        val imageY = padding + frameWidth
-        canvas.drawBitmap(input, imageX.toFloat(), imageY.toFloat(), null)
-
-        // 绘制水印文字
-        if (preset.textContent.isNotEmpty() || preset.textLines.isNotEmpty()) {
-            drawWatermarkText(canvas, totalWidth, totalHeight, preset, input)
+        when (preset.frameStyle) {
+            FrameStyle.CLASSIC_MATTE -> drawClassicMatte(canvas, input, canvasW, canvasH, imgX, imgY, radius)
+            FrameStyle.MINIMAL_LINE -> drawMinimalLine(canvas, input, canvasW, canvasH, imgX, imgY, radius)
+            FrameStyle.VIGNETTE -> drawVignette(canvas, input, canvasW, canvasH)
+            FrameStyle.DOUBLE_PRESERVE -> drawDoublePreserve(canvas, input, canvasW, canvasH, imgX, imgY, radius)
+            FrameStyle.PHOTO_PAPER -> drawPhotoPaper(canvas, input, canvasW, canvasH, imgX, imgY, radius)
+            FrameStyle.NONE -> canvas.drawBitmap(input, 0f, 0f, null)
         }
 
-        // 绘制 EXIF 参数
-        if (preset.showExif && preset.exifItems.isNotEmpty()) {
-            drawExifInfo(canvas, totalWidth, totalHeight, preset, input)
-        }
-
-        // 全局不透明度
-        if (preset.globalIntensity < 0.999f) {
-            val alphaPaint = Paint().apply {
-                alpha = (preset.globalIntensity * 255).toInt()
-                xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-            }
-            canvas.drawRect(0f, 0f, totalWidth.toFloat(), totalHeight.toFloat(), alphaPaint)
+        if (preset.showExif || preset.textContent.isNotEmpty()) {
+            drawBottomBar(canvas, canvasW, canvasH, imgY, preset)
         }
 
         return output
     }
 
-    private fun drawFrameBackground(canvas: Canvas, w: Int, h: Int, preset: WatermarkPreset) {
-        when (preset.frameStyle) {
-            FrameStyle.NONE -> {}
-            FrameStyle.POLAROID -> {
-                // 白色背景
-                canvas.drawColor(Color.WHITE)
-            }
-            FrameStyle.CLASSIC_MATTE -> {
-                val bgPaint = Paint().apply {
-                    color = preset.frameBgColor.toInt()
-                    alpha = (preset.frameBgOpacity * 255).toInt()
-                }
-                canvas.drawColor(bgPaint.color)
-            }
-            else -> {
-                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-            }
+    private fun drawClassicMatte(canvas: Canvas, img: Bitmap, cw: Int, ch: Int, ix: Int, iy: Int, radius: Int) {
+        val bg = Bitmap.createScaledBitmap(img, cw, ch, true)
+        val blurPaint = Paint().apply {
+            val blurRadius = (cw * 0.03f).coerceIn(10f, 60f)
+            maskFilter = BlurMaskFilter(blurRadius, BlurMaskFilter.Blur.NORMAL)
         }
+        canvas.drawBitmap(bg, 0f, 0f, blurPaint)
+        bg.recycle()
+        drawRoundedImage(canvas, img, ix.toFloat(), iy.toFloat(), radius)
     }
 
-    private fun drawFrame(
-        canvas: Canvas, w: Int, h: Int,
-        padding: Int, frameWidth: Int, preset: WatermarkPreset
-    ) {
-        val framePaint = Paint().apply {
-            color = preset.frameColor.toInt()
-            style = Paint.Style.STROKE
-            strokeWidth = frameWidth.toFloat()
+    private fun drawMinimalLine(canvas: Canvas, img: Bitmap, cw: Int, ch: Int, ix: Int, iy: Int, radius: Int) {
+        canvas.drawColor(Color.WHITE)
+        drawRoundedImage(canvas, img, ix.toFloat(), iy.toFloat(), radius)
+
+        val borderPaint = Paint().apply {
+            style = Paint.Style.STROKE; strokeWidth = (cw * 0.002f).coerceIn(1f, 3f)
+            color = Color.argb(40, 0, 0, 0); isAntiAlias = true
+        }
+        canvas.drawRoundRect(ix.toFloat(), iy.toFloat(), (ix + img.width).toFloat(), (iy + img.height).toFloat(),
+            radius.toFloat(), radius.toFloat(), borderPaint)
+    }
+
+    private fun drawVignette(canvas: Canvas, img: Bitmap, cw: Int, ch: Int) {
+        canvas.drawBitmap(img, 0f, 0f, null)
+        val vignettePaint = Paint().apply {
+            shader = RadialGradient(cw / 2f, ch / 2f, maxOf(cw, ch) * 0.75f,
+                intArrayOf(Color.TRANSPARENT, Color.argb(160, 0, 0, 0)),
+                floatArrayOf(0.3f, 1f), Shader.TileMode.CLAMP)
+        }
+        canvas.drawRect(0f, 0f, cw.toFloat(), ch.toFloat(), vignettePaint)
+    }
+
+    private fun drawDoublePreserve(canvas: Canvas, img: Bitmap, cw: Int, ch: Int, ix: Int, iy: Int, radius: Int) {
+        canvas.drawColor(Color.argb(245, 250, 248, 245))
+        drawRoundedImage(canvas, img, ix.toFloat(), iy.toFloat(), radius * 2)
+
+        val outer = Paint().apply {
+            style = Paint.Style.STROKE; strokeWidth = (cw * 0.008f).coerceIn(2f, 6f)
+            color = Color.argb(30, 0, 0, 0); isAntiAlias = true
+        }
+        val inner = Paint().apply {
+            style = Paint.Style.STROKE; strokeWidth = (cw * 0.002f).coerceIn(1f, 2f)
+            color = Color.argb(60, 0, 0, 0); isAntiAlias = true
+        }
+        val gap = (cw * 0.015f).toInt().coerceIn(4, 16)
+        canvas.drawRoundRect((ix - gap).toFloat(), (iy - gap).toFloat(), (ix + img.width + gap).toFloat(), (iy + img.height + gap).toFloat(), (radius * 2 + gap).toFloat(), (radius * 2 + gap).toFloat(), inner)
+        canvas.drawRoundRect((ix - gap * 2).toFloat(), (iy - gap * 2).toFloat(), (ix + img.width + gap * 2).toFloat(), (iy + img.height + gap * 2).toFloat(), (radius * 2 + gap * 2).toFloat(), (radius * 2 + gap * 2).toFloat(), outer)
+    }
+
+    private fun drawPhotoPaper(canvas: Canvas, img: Bitmap, cw: Int, ch: Int, ix: Int, iy: Int, radius: Int) {
+        canvas.drawColor(Color.WHITE)
+        drawRoundedImage(canvas, img, ix.toFloat(), iy.toFloat(), radius.coerceAtMost(12))
+
+        val shadowPaint = Paint().apply {
+            setShadowLayer((cw * 0.015f).coerceIn(4f, 16f), 0f, (cw * 0.005f).coerceIn(1f, 6f), Color.argb(60, 0, 0, 0))
             isAntiAlias = true
         }
-
-        val innerRect = RectF(
-            padding.toFloat(),
-            padding.toFloat(),
-            (w - padding).toFloat(),
-            (h - padding).toFloat()
-        )
-
-        when (preset.frameStyle) {
-            FrameStyle.NONE -> { /* 无相框 */ }
-
-            FrameStyle.SIMPLE -> {
-                // 简洁单线框
-                canvas.drawRoundRect(
-                    innerRect,
-                    preset.frameRadius * DP_SCALE,
-                    preset.frameRadius * DP_SCALE,
-                    framePaint
-                )
-            }
-
-            FrameStyle.DOUBLE -> {
-                // 双线框
-                framePaint.strokeWidth = frameWidth.toFloat()
-                canvas.drawRoundRect(
-                    innerRect,
-                    preset.frameRadius * DP_SCALE,
-                    preset.frameRadius * DP_SCALE,
-                    framePaint
-                )
-                framePaint.strokeWidth = (frameWidth * 0.4f)
-                val innerMargin = frameWidth * 2f
-                canvas.drawRoundRect(
-                    RectF(
-                        innerRect.left + innerMargin,
-                        innerRect.top + innerMargin,
-                        innerRect.right - innerMargin,
-                        innerRect.bottom - innerMargin
-                    ),
-                    preset.frameRadius * DP_SCALE * 0.5f,
-                    preset.frameRadius * DP_SCALE * 0.5f,
-                    framePaint
-                )
-            }
-
-            FrameStyle.FILM_STRIP -> {
-                // 胶片边框 — 上下较宽+齿孔装饰
-                val topBottomWidth = frameWidth * 2f
-                val sideWidth = frameWidth * 0.8f
-
-                // 上下宽框
-                val topRect = RectF(0f, 0f, w.toFloat(), topBottomWidth)
-                val bottomRect = RectF(0f, h - topBottomWidth, w.toFloat(), h.toFloat())
-                framePaint.style = Paint.Style.FILL
-                framePaint.color = Color.rgb(30, 30, 30)
-                canvas.drawRect(topRect, framePaint)
-                canvas.drawRect(bottomRect, framePaint)
-
-                // 齿孔装饰
-                val holePaint = Paint().apply {
-                    color = Color.rgb(60, 60, 60)
-                    style = Paint.Style.FILL
-                }
-                val holeRadius = topBottomWidth * 0.2f
-                val holeSpacing = holeRadius * 4f
-                var x = holeSpacing
-                while (x < w) {
-                    canvas.drawCircle(x, topBottomWidth / 2f, holeRadius, holePaint)
-                    canvas.drawCircle(x, h - topBottomWidth / 2f, holeRadius, holePaint)
-                    x += holeSpacing
-                }
-            }
-
-            FrameStyle.CLASSIC_MATTE -> {
-                // 经典卡纸框 — 宽白边
-                framePaint.style = Paint.Style.STROKE
-                framePaint.strokeWidth = frameWidth.toFloat()
-                canvas.drawRect(innerRect, framePaint)
-            }
-
-            FrameStyle.POLAROID -> {
-                // 拍立得 — 下方宽白边
-                val bottomExtra = (h - padding) / 5  // 下方多 20% 空间
-                framePaint.style = Paint.Style.STROKE
-                framePaint.strokeWidth = 1f
-                framePaint.color = Color.rgb(220, 220, 220)
-                canvas.drawRect(
-                    RectF(innerRect.left, innerRect.top, innerRect.right, innerRect.bottom.toFloat()),
-                    framePaint
-                )
-            }
-
-            FrameStyle.VIGNETTE -> {
-                // 暗角效果 — 在图片区域绘制径向渐变
-                val vignettePaint = Paint().apply {
-                    shader = RadialGradient(
-                        w / 2f, h / 2f, maxOf(w, h) * 0.7f,
-                        intArrayOf(Color.TRANSPARENT, Color.argb(180, 0, 0, 0)),
-                        floatArrayOf(0.3f, 1f),
-                        Shader.TileMode.CLAMP
-                    )
-                }
-                canvas.drawRect(innerRect, vignettePaint)
-
-                // 细边框
-                framePaint.style = Paint.Style.STROKE
-                framePaint.strokeWidth = frameWidth * 0.5f
-                framePaint.color = Color.argb(80, 255, 255, 255)
-                canvas.drawRect(innerRect, framePaint)
-            }
-
-            FrameStyle.SHADOW_BORDER -> {
-                // 阴影边框
-                val shadowPaint = Paint().apply {
-                    setShadowLayer(
-                        frameWidth * 2f,
-                        frameWidth * 0.5f,
-                        frameWidth * 0.5f,
-                        Color.argb(120, 0, 0, 0)
-                    )
-                    color = Color.WHITE
-                    style = Paint.Style.FILL
-                }
-                canvas.drawRect(innerRect, shadowPaint)
-
-                framePaint.style = Paint.Style.STROKE
-                framePaint.strokeWidth = frameWidth * 0.3f
-                framePaint.color = Color.rgb(200, 200, 200)
-                canvas.drawRect(innerRect, framePaint)
-            }
-        }
+        canvas.drawRoundRect(ix.toFloat(), iy.toFloat(), (ix + img.width).toFloat(), (iy + img.height).toFloat(),
+            radius.toFloat(), radius.toFloat(), shadowPaint)
     }
 
-    private fun drawWatermarkText(
-        canvas: Canvas, w: Int, h: Int,
-        preset: WatermarkPreset, image: Bitmap
-    ) {
-        val lines = if (preset.textLines.isNotEmpty()) {
-            preset.textLines
-        } else {
-            preset.textContent.split("\n").map { WatermarkTextLine(content = it) }
-        }
-
-        if (lines.isEmpty()) return
-
+    private fun drawBottomBar(canvas: Canvas, cw: Int, ch: Int, imgY: Int, preset: WatermarkPreset) {
+        val barTop = ch - (imgY * 0.7f).toInt().coerceIn(36, 72)
         val textPaint = Paint().apply {
-            isAntiAlias = true
-            color = preset.textColor.toInt()
-            alpha = (preset.textOpacity * 255).toInt()
-            textSize = preset.fontSize * DP_SCALE
-            letterSpacing = preset.letterSpacing / preset.fontSize
+            isAntiAlias = true; color = Color.argb(180, 0, 0, 0); textSize = (cw * 0.025f).coerceIn(14f, 28f)
+            textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD
+        }
 
-            // 加载自定义字体
-            if (preset.fontPath.isNotEmpty()) {
-                try {
-                    typeface = Typeface.createFromFile(File(preset.fontPath))
-                } catch (_: Exception) {}
+        val parts = mutableListOf<String>()
+
+        if (preset.textContent.isNotEmpty()) {
+            parts.add(preset.textContent)
+        }
+
+        if (preset.showExif && preset.exifItems.isNotEmpty()) {
+            val exifText = preset.exifItems.joinToString("  ") { item ->
+                when (item.tag) {
+                    "FocalLength" -> "${item.prefix}50mm${item.suffix}"
+                    "Aperture" -> "${item.prefix}f/5.6${item.suffix}"
+                    "ISO" -> "${item.prefix}400${item.suffix}"
+                    "ShutterSpeed" -> "${item.prefix}1/250${item.suffix}"
+                    "Make" -> "Nikon"
+                    "Model" -> "Z30"
+                    else -> item.label
+                }
             }
-
-            // 文字阴影
-            if (preset.textShadow) {
-                setShadowLayer(
-                    preset.textShadowRadius * DP_SCALE,
-                    1f, 1f,
-                    preset.textShadowColor.toInt()
-                )
-            }
+            parts.add(exifText)
         }
 
-        // 根据 position 计算起始 Y 坐标
-        val lineHeight = textPaint.textSize * 1.5f
-        val totalTextHeight = lineHeight * lines.size
-        val margin = (16f * DP_SCALE).toInt()
+        val text = parts.joinToString("  ·  ")
+        canvas.drawText(text, cw / 2f, (barTop + ch) / 2f + textPaint.textSize / 3f, textPaint)
 
-        val startX = when (preset.position) {
-            WatermarkPosition.TOP_LEFT, WatermarkPosition.CENTER_LEFT, WatermarkPosition.BOTTOM_LEFT ->
-                margin.toFloat() + preset.offsetX * DP_SCALE
-            WatermarkPosition.TOP_CENTER, WatermarkPosition.CENTER, WatermarkPosition.BOTTOM_CENTER ->
-                w / 2f + preset.offsetX * DP_SCALE
-            WatermarkPosition.TOP_RIGHT, WatermarkPosition.CENTER_RIGHT, WatermarkPosition.BOTTOM_RIGHT ->
-                w - margin - preset.offsetX * DP_SCALE
-            else -> w / 2f
+        val linePaint = Paint().apply {
+            color = Color.argb(40, 0, 0, 0); strokeWidth = 0.5f
         }
-
-        val startY = when (preset.position) {
-            WatermarkPosition.TOP_LEFT, WatermarkPosition.TOP_CENTER, WatermarkPosition.TOP_RIGHT ->
-                margin.toFloat() + preset.offsetY * DP_SCALE + lineHeight
-            WatermarkPosition.CENTER_LEFT, WatermarkPosition.CENTER, WatermarkPosition.CENTER_RIGHT ->
-                h / 2f - totalTextHeight / 2f + lineHeight + preset.offsetY * DP_SCALE
-            WatermarkPosition.BOTTOM_LEFT, WatermarkPosition.BOTTOM_CENTER, WatermarkPosition.BOTTOM_RIGHT ->
-                h - margin - totalTextHeight + lineHeight - preset.offsetY * DP_SCALE
-            else -> h / 2f
-        }
-
-        textPaint.textAlign = when (preset.position) {
-            WatermarkPosition.TOP_LEFT, WatermarkPosition.CENTER_LEFT, WatermarkPosition.BOTTOM_LEFT -> Align.LEFT
-            WatermarkPosition.TOP_CENTER, WatermarkPosition.CENTER, WatermarkPosition.BOTTOM_CENTER -> Align.CENTER
-            WatermarkPosition.TOP_RIGHT, WatermarkPosition.CENTER_RIGHT, WatermarkPosition.BOTTOM_RIGHT -> Align.RIGHT
-            else -> Align.CENTER
-        }
-
-        val adjustedStartX = when (textPaint.textAlign) {
-            Align.CENTER -> w / 2f + preset.offsetX * DP_SCALE
-            Align.RIGHT -> w - margin.toFloat() - preset.offsetX * DP_SCALE
-            else -> margin.toFloat() + preset.offsetX * DP_SCALE
-        }
-
-        // 绘制每一行
-        lines.forEachIndexed { index, line ->
-            val y = startY + index * lineHeight
-            val text = if (line.isExif && line.exifTag.isNotEmpty()) {
-                // 在实际应用中，这里读取 EXIF 数据
-                "[${line.exifTag}]"
-            } else {
-                line.content
-            }
-            canvas.drawText(text, adjustedStartX, y, textPaint)
-        }
+        canvas.drawLine(cw * 0.2f, barTop.toFloat(), cw * 0.8f, barTop.toFloat(), linePaint)
     }
 
-    private fun drawExifInfo(
-        canvas: Canvas, w: Int, h: Int,
-        preset: WatermarkPreset, image: Bitmap
-    ) {
-        // EXIF 文字通常绘制在底部
-        val exifPaint = Paint().apply {
-            isAntiAlias = true
-            color = preset.textColor.toInt()
-            alpha = (preset.textOpacity * 0.7f * 255).toInt()
-            textSize = preset.exifFontSize * DP_SCALE
-            textAlign = Align.CENTER
+    private fun drawRoundedImage(canvas: Canvas, img: Bitmap, x: Float, y: Float, radius: Int) {
+        val path = Path().apply {
+            addRoundRect(x, y, x + img.width, y + img.height, radius.toFloat(), radius.toFloat(), Path.Direction.CW)
         }
-
-        val exifText = preset.exifItems.joinToString(preset.exifSeparator) { item ->
-            "${item.prefix}[${item.tag}]${item.suffix}"
-        }
-
-        val y = h - (16f * DP_SCALE) - exifPaint.textSize
-        canvas.drawText(exifText, w / 2f, y, exifPaint)
+        canvas.save()
+        canvas.clipPath(path)
+        canvas.drawBitmap(img, x, y, null)
+        canvas.restore()
     }
 
-    /**
-     * 从文件读取 EXIF 信息并格式化为显示文本
-     */
-    fun readExifTags(imagePath: String, items: List<ExifDisplayItem>): Map<String, String> {
-        val result = mutableMapOf<String, String>()
+    fun readExifItems(imagePath: String, items: List<ExifDisplayItem>): String {
+        val sb = StringBuilder()
         try {
-            val exif = ExifInterface(imagePath)
+            val exif = androidx.exifinterface.media.ExifInterface(imagePath)
             for (item in items) {
                 val value = when (item.tag) {
-                    "Make" -> exif.getAttribute(ExifInterface.TAG_MAKE)
-                    "Model" -> exif.getAttribute(ExifInterface.TAG_MODEL)
-                    "ISO" -> exif.getAttribute(ExifInterface.TAG_ISO_SPEED)
-                    "Aperture" -> exif.getAttribute(ExifInterface.TAG_APERTURE_VALUE)
-                    "ShutterSpeed" -> exif.getAttribute(ExifInterface.TAG_SHUTTER_SPEED_VALUE)
-                    "FocalLength" -> exif.getAttribute(ExifInterface.TAG_FOCAL_LENGTH)
-                    "DateTime" -> exif.getAttribute(ExifInterface.TAG_DATETIME)
-                    "LensModel" -> exif.getAttribute(ExifInterface.TAG_LENS_MODEL)
-                    "ExposureBias" -> exif.getAttribute(ExifInterface.TAG_EXPOSURE_BIAS_VALUE)
-                    "Flash" -> exif.getAttribute(ExifInterface.TAG_FLASH)
-                    "WhiteBalance" -> exif.getAttribute(ExifInterface.TAG_WHITE_BALANCE)
-                    "GPSLatitude" -> exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE)
-                    "GPSLongitude" -> exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE)
+                    "Make" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_MAKE)
+                    "Model" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_MODEL)
+                    "ISO" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_ISO_SPEED)
+                    "FocalLength" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_FOCAL_LENGTH)
+                    "Aperture" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_APERTURE_VALUE)
+                    "ShutterSpeed" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_SHUTTER_SPEED_VALUE)
+                    "DateTime" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME)
+                    "LensModel" -> exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_LENS_MODEL)
                     else -> null
-                }
-                if (value != null) {
-                    result[item.tag] = "${item.prefix}$value${item.suffix}"
-                }
+                } ?: continue
+                if (sb.isNotEmpty()) sb.append("  ")
+                sb.append("${item.prefix}$value${item.suffix}")
             }
         } catch (_: Exception) {}
-        return result
+        return sb.toString()
     }
 }

@@ -72,14 +72,12 @@ enum class WatermarkPosition {
  * 相框样式枚举
  */
 enum class FrameStyle {
-    NONE,           // 无相框
-    SIMPLE,         // 简洁线条框
-    DOUBLE,         // 双线框
-    FILM_STRIP,     // 胶片边框
-    CLASSIC_MATTE,  // 经典留白卡纸框
-    POLAROID,       // 拍立得风格
-    VIGNETTE,       // 暗角相框
-    SHADOW_BORDER   // 阴影边框
+    NONE,                // 无相框
+    CLASSIC_MATTE,       // 经典留白 - 模糊背景+居中锐图+圆角阴影
+    MINIMAL_LINE,        // 极简线框 - 单线细框+微妙外阴影
+    VIGNETTE,            // 暗角光影 - 径向渐变暗角
+    DOUBLE_PRESERVE,     // 双框珍藏 - 双同心边框+宽留白
+    PHOTO_PAPER          // 相纸印记 - 拍立得/相纸风格
 }
 
 /**
