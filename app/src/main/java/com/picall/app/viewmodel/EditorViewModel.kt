@@ -42,32 +42,6 @@ class EditorViewModel(
     val lutPresets: StateFlow<List<Preset>> = repository.getLuts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Merged film presets: builtin + custom from Room
-    val allFilmPresets: StateFlow<List<com.picall.app.ui.components.FilmPresetItem>> = combine(
-        colorFormulaPresets, lutPresets
-    ) { colorPresets, luts ->
-        val items = mutableListOf<com.picall.app.ui.components.FilmPresetItem>()
-        // Built-in presets
-        items.addAll(com.picall.app.ui.components.BUILTIN_FILM_PRESETS)
-        // Custom color presets
-        for (p in colorPresets) {
-            val f = p.toColorFormula() ?: continue
-            items.add(com.picall.app.ui.components.FilmPresetItem(
-                id = "custom_${p.id}", name = p.name, formula = f,
-                type = PresetType.COLOR_FORMULA, lutData = p.thumbnailPath, isBuiltin = false
-            ))
-        }
-        // LUT presets
-        for (p in luts) {
-            val lut = p.toLutPreset() ?: continue
-            items.add(com.picall.app.ui.components.FilmPresetItem(
-                id = "lut_${p.id}", name = p.name, formula = ColorFormula.DEFAULT,
-                type = PresetType.LUT, lutData = lut.lutData, isBuiltin = false
-            ))
-        }
-        items
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
     private val history = mutableListOf<ColorFormula>()
     private var previewJob: Job? = null
 

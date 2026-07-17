@@ -46,6 +46,7 @@ import com.picall.app.data.model.*
 import com.picall.app.data.repository.PresetRepository
 import com.picall.app.ui.components.AdjustmentSlider
 import com.picall.app.ui.components.BidirectionalSlider
+import com.picall.app.ui.components.BUILTIN_FILM_PRESETS
 import com.picall.app.ui.components.FilmRollCard
 import com.picall.app.ui.components.FilterCategoryCard
 import com.picall.app.ui.components.FilmPresetItem
@@ -220,7 +221,22 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
     val f = s.colorFormula
     val lut = s.lutPreset
     var selectedFilmId by remember { mutableStateOf("none") }
-    val allPresets by vm.allFilmPresets.collectAsState()
+    val customPresets by vm.colorFormulaPresets.collectAsState()
+    val savedLuts by vm.lutPresets.collectAsState()
+
+    val allPresets = remember(customPresets, savedLuts) {
+        val items = mutableListOf<FilmPresetItem>()
+        items.addAll(BUILTIN_FILM_PRESETS)
+        for (p in customPresets) {
+            val formula = p.toColorFormula() ?: continue
+            items.add(FilmPresetItem("custom_${p.id}", p.name, formula, PresetType.COLOR_FORMULA, p.thumbnailPath))
+        }
+        for (p in savedLuts) {
+            val l = p.toLutPreset() ?: continue
+            items.add(FilmPresetItem("lut_${p.id}", p.name, ColorFormula.DEFAULT, PresetType.LUT, l.lutData))
+        }
+        items
+    }
 
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
         // Film strip
