@@ -27,7 +27,7 @@ data class EditorState(
     val canUndo: Boolean = false
 )
 
-enum class EditorTab { COLOR_FORMULA, LUT, PRESETS }
+enum class EditorTab { COLOR_FORMULA, PRESETS }
 
 class EditorViewModel(
     private val repository: PresetRepository
@@ -111,26 +111,24 @@ class EditorViewModel(
 
     // ── Presets ──
 
-    fun saveColorPreset(name: String) {
-        viewModelScope.launch { repository.saveColorFormula(name, _state.value.colorFormula) }
-    }
-
-    fun saveLutPreset(name: String) {
-        viewModelScope.launch { repository.saveLut(name, _state.value.lutPreset) }
+    fun savePreset(name: String) {
+        viewModelScope.launch {
+            val s = _state.value
+            // save as color formula (includes LUT ref for combined presets)
+            repository.saveColorFormula(name, s.colorFormula, s.lutPreset.lutData)
+        }
     }
 
     fun loadPreset(preset: Preset) {
         viewModelScope.launch {
-            when (preset.type) {
-                PresetType.COLOR_FORMULA -> preset.toColorFormula()?.let {
-                    _state.update { s -> s.copy(colorFormula = it) }
-                    triggerPreview()
+            preset.toColorFormula()?.let { formula ->
+                _state.update { s -> s.copy(colorFormula = formula) }
+                // also load associated LUT if present in the preset's extra data
+                if (preset.thumbnailPath.isNotEmpty()) {
+                    val lut = LutPreset(lutData = preset.thumbnailPath, intensity = 1f)
+                    _state.update { s -> s.copy(lutPreset = lut) }
                 }
-                PresetType.LUT -> preset.toLutPreset()?.let {
-                    _state.update { s -> s.copy(lutPreset = it) }
-                    triggerPreview()
-                }
-                else -> {}
+                triggerPreview()
             }
         }
     }
