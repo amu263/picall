@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -47,6 +48,7 @@ import com.picall.app.data.repository.PresetRepository
 import com.picall.app.ui.components.AdjustmentSlider
 import com.picall.app.ui.components.BidirectionalSlider
 import com.picall.app.ui.components.BUILTIN_FILM_PRESETS
+import com.picall.app.ui.components.CurvesEditor
 import com.picall.app.ui.components.FilmRollCard
 import com.picall.app.ui.components.FilterCategoryCard
 import com.picall.app.ui.components.FilmPresetItem
@@ -243,16 +245,29 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
     }
 
     Column(modifier.verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
-        // Film strip
+        // Film strip — circular infinite scrolling
         Text("胶片预设", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+
+        val itemCount = allPresets.size
+        val repeatMultiplier = 5000
+        val filmListState = rememberLazyListState()
+        var longPressPreset by remember { mutableStateOf<FilmPresetItem?>(null) }
+
+        LaunchedEffect(itemCount) {
+            if (itemCount > 0) {
+                filmListState.scrollToItem(repeatMultiplier / 2 * itemCount)
+            }
+        }
+
         LazyRow(
+            state = filmListState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(allPresets.size) { index ->
-                val preset = allPresets[index]
+            items(itemCount * repeatMultiplier) { index ->
+                val preset = allPresets[index % itemCount]
                 FilmRollCard(
                     item = preset,
                     isSelected = selectedFilmId == preset.id,
@@ -264,10 +279,41 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
                             }
                             else -> vm.selectFilmPreset(preset.formula, preset.id)
                         }
-                    }
+                    },
+                    onLongClick = if (!preset.isBuiltin) {
+                        { longPressPreset = preset }
+                    } else null
                 )
             }
-            item { Spacer(Modifier.width(4.dp)) }
+        }
+
+        // Long-press dialog for custom presets
+        if (longPressPreset != null) {
+            AlertDialog(
+                onDismissRequest = { longPressPreset = null },
+                title = { Text(longPressPreset!!.name) },
+                text = { Text("编辑或删除此预设") },
+                confirmButton = {
+                    Button(onClick = {
+                        // Load the preset for editing
+                        selectedFilmId = longPressPreset!!.id
+                        vm.selectFilmPreset(longPressPreset!!.formula, longPressPreset!!.id)
+                        longPressPreset = null
+                    }, colors = ButtonDefaults.buttonColors(containerColor = SliderActive)) {
+                        Text("编辑")
+                    }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(onClick = { longPressPreset = null }) { Text("取消") }
+                        TextButton(onClick = {
+                            val id = longPressPreset!!.id.removePrefix("custom_").removePrefix("lut_").toLongOrNull()
+                            if (id != null) vm.deletePreset(id)
+                            longPressPreset = null
+                        }) { Text("删除", color = Color(0xFFE53935)) }
+                    }
+                }
+            )
         }
 
         // LUT card
@@ -324,6 +370,34 @@ private fun FormulaPanel(s: EditorState, vm: EditorViewModel, onSavePreset: () -
             AdjustmentSlider("对比度", f.contrast, { vm.updateFormula { copy(contrast = it) } })
             AdjustmentSlider("高光", f.highlights, { vm.updateFormula { copy(highlights = it) } })
             AdjustmentSlider("阴影", f.shadows, { vm.updateFormula { copy(shadows = it) } })
+        }
+
+        // Curves — tone curve editor with grid + draggable points + S-curve presets
+        FilterCategoryCard("曲线", s.expandedCategory == "curves", { vm.toggleCategory("curves") }, f.curvesIntensity,
+            { vm.updateFormula { copy(curvesIntensity = it) } }) {
+            val curveChannel = s.selectedCurveChannel
+            val points = when (curveChannel) {
+                "R" -> f.curvePointsR
+                "G" -> f.curvePointsG
+                "B" -> f.curvePointsB
+                else -> f.curvePointsW
+            }
+            CurvesEditor(
+                channelLabel = curveChannel,
+                points = points,
+                onPointsChanged = { pts ->
+                    vm.updateFormula {
+                        when (curveChannel) {
+                            "R" -> copy(curvePointsR = pts)
+                            "G" -> copy(curvePointsG = pts)
+                            "B" -> copy(curvePointsB = pts)
+                            else -> copy(curvePointsW = pts)
+                        }
+                    }
+                },
+                selectedChannel = curveChannel,
+                onChannelChanged = { vm.setCurveChannel(it) }
+            )
         }
 
         // Color

@@ -2,10 +2,11 @@ package com.picall.app.ui.components
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -47,11 +48,13 @@ data class FilmPresetItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FilmRollCard(
     item: FilmPresetItem,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -61,7 +64,7 @@ fun FilmRollCard(
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFFF0EDE8))
             .then(if (isSelected) Modifier.border(1.5.dp, SliderActive, RoundedCornerShape(12.dp)) else Modifier)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(Modifier.fillMaxWidth().height(60.dp).padding(3.dp), contentAlignment = Alignment.Center) {

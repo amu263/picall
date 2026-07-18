@@ -24,7 +24,9 @@ data class EditorState(
 
     val activeTab: EditorTab = EditorTab.COLOR_FORMULA,
     val expandedCategory: String? = null,
-    val canUndo: Boolean = false
+    val canUndo: Boolean = false,
+
+    val selectedCurveChannel: String = "W"
 )
 
 enum class EditorTab { COLOR_FORMULA, PRESETS }
@@ -59,6 +61,10 @@ class EditorViewModel(
         _state.update {
             it.copy(expandedCategory = if (it.expandedCategory == cat) null else cat)
         }
+    }
+
+    fun setCurveChannel(channel: String) {
+        _state.update { it.copy(selectedCurveChannel = channel) }
     }
 
     // ── Color Formula ──
@@ -185,7 +191,7 @@ class EditorViewModel(
     private fun triggerPreview() {
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            delay(300) // 300ms debounce
+            delay(16) // ~1 frame debounce for instant feedback
             val s = _state.value
             val original = s.originalBitmap ?: return@launch
             _state.update { it.copy(isProcessing = true) }
