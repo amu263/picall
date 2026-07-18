@@ -80,6 +80,7 @@ class PresetRepository(private val database: PresetDatabase) {
     fun getAllPresets(): Flow<List<Preset>> = dao.getAllPresets()
     fun getFavorites(): Flow<List<Preset>> = dao.getFavoritePresets()
 
+    suspend fun getPresetById(id: Long): Preset? = dao.getPresetById(id)
     suspend fun deletePreset(id: Long) = dao.deletePresetById(id)
     suspend fun toggleFavorite(id: Long, favorite: Boolean) = dao.setFavorite(id, favorite)
     suspend fun getCategories(): List<String> = dao.getAllCategories()

@@ -191,7 +191,7 @@ class EditorViewModel(
     private fun triggerPreview() {
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            delay(16) // ~1 frame debounce for instant feedback
+            delay(80) // debounce: balance responsiveness vs curve drag smoothness
             val s = _state.value
             val original = s.originalBitmap ?: return@launch
             _state.update { it.copy(isProcessing = true) }

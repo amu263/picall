@@ -36,6 +36,10 @@ fun CurvesEditor(
     var dragValue by remember { mutableStateOf("") }
     val sorted = remember(points) { points.sortedBy { it.x } }
 
+    // Stable refs to prevent pointerInput restart during drag
+    val currentSorted by rememberUpdatedState(sorted)
+    val currentSelectedIndex by rememberUpdatedState(selectedPointIndex)
+
     Column(modifier) {
         // Channel buttons
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
@@ -48,12 +52,13 @@ fun CurvesEditor(
             }
         }
 
-        // Canvas
+        // Canvas — pointerInput(Unit) + rememberUpdatedState prevents gesture restart
         Box(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFF111111))
-            .pointerInput(sorted) {
+            .pointerInput(Unit) {
                 detectTapGestures { offset ->
+                    val s = currentSorted
                     val ptSize = 20f
-                    val hit = sorted.indexOfFirst { pt ->
+                    val hit = s.indexOfFirst { pt ->
                         val px = pt.x * size.width; val py = (1f - pt.y) * size.height
                         (offset - Offset(px, py)).getDistance() < ptSize
                     }
@@ -61,17 +66,18 @@ fun CurvesEditor(
                     else {
                         val nx = (offset.x / size.width).coerceIn(0f, 1f)
                         val ny = (1f - offset.y / size.height).coerceIn(0f, 1f)
-                        val updated = (sorted + CurvePoint(nx, ny)).sortedBy { it.x }
+                        val updated = (s + CurvePoint(nx, ny)).sortedBy { it.x }
                         selectedPointIndex = updated.indexOfFirst { it.x == nx }
                         onPointsChanged(updated)
                     }
                 }
             }
-            .pointerInput(sorted, selectedPointIndex) {
+            .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { offset ->
+                        val s = currentSorted
                         val ptSize = 20f
-                        selectedPointIndex = sorted.indexOfFirst { pt ->
+                        selectedPointIndex = s.indexOfFirst { pt ->
                             val px = pt.x * size.width; val py = (1f - pt.y) * size.height
                             (offset - Offset(px, py)).getDistance() < ptSize
                         }
@@ -79,16 +85,18 @@ fun CurvesEditor(
                     onDragEnd = { selectedPointIndex = -1; dragValue = "" },
                     onDragCancel = { selectedPointIndex = -1; dragValue = "" }
                 ) { change, _ ->
-                    if (selectedPointIndex in sorted.indices) {
+                    val idx = currentSelectedIndex
+                    val s = currentSorted
+                    if (idx in s.indices) {
                         change.consume()
-                        val isEndpoint = selectedPointIndex == 0 || selectedPointIndex == sorted.size - 1
-                        val nx = if (isEndpoint) sorted[selectedPointIndex].x
+                        val isEndpoint = idx == 0 || idx == s.size - 1
+                        val nx = if (isEndpoint) s[idx].x
                         else (change.position.x / size.width).coerceIn(
-                            sorted.getOrElse(selectedPointIndex - 1) { sorted.first() }.x + 0.02f,
-                            sorted.getOrElse(selectedPointIndex + 1) { sorted.last() }.x - 0.02f)
+                            s.getOrElse(idx - 1) { s.first() }.x + 0.02f,
+                            s.getOrElse(idx + 1) { s.last() }.x - 0.02f)
                         val ny = (1f - change.position.y / size.height).coerceIn(0f, 1f)
-                        val updated = sorted.toMutableList()
-                        updated[selectedPointIndex] = CurvePoint(nx, ny)
+                        val updated = s.toMutableList()
+                        updated[idx] = CurvePoint(nx, ny)
                         onPointsChanged(updated)
                         dragValue = "X: ${"%.2f".format(nx)} Y: ${"%.2f".format(ny)}"
                     }

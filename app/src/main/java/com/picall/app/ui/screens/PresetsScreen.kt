@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PresetsScreen(onNavigateBack: () -> Unit) {
+fun PresetsScreen(onNavigateBack: () -> Unit, onLoadPreset: (Long) -> Unit = {}) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val db = remember { PresetDatabase.getInstance(ctx) }
@@ -83,6 +83,7 @@ fun PresetsScreen(onNavigateBack: () -> Unit) {
                     items(filtered, key = { it.id }) { preset ->
                         PresetGridCard(
                             preset = preset,
+                            onClick = { onLoadPreset(preset.id) },
                             onDelete = { deleteTarget = preset }
                         )
                     }
@@ -113,7 +114,7 @@ fun PresetsScreen(onNavigateBack: () -> Unit) {
 }
 
 @Composable
-private fun PresetGridCard(preset: Preset, onDelete: () -> Unit) {
+private fun PresetGridCard(preset: Preset, onClick: () -> Unit, onDelete: () -> Unit) {
     val typeLabel = when (preset.type) {
         PresetType.COLOR_FORMULA -> if (preset.thumbnailPath.isNotEmpty()) "含LUT" else "色彩配方"
         PresetType.LUT -> "3D LUT"
@@ -128,6 +129,7 @@ private fun PresetGridCard(preset: Preset, onDelete: () -> Unit) {
     }
 
     Card(
+        onClick = onClick,
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
         modifier = Modifier.fillMaxWidth()

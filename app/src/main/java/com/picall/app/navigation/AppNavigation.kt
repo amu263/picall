@@ -1,6 +1,7 @@
 package com.picall.app.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,8 +21,13 @@ fun AppNavigation(navController: NavHostController) {
         navController = navController,
         startDestination = Screen.Editor.route
     ) {
-        composable(Screen.Editor.route) {
+        composable(Screen.Editor.route) { backStackEntry ->
+            val savedStateHandle = backStackEntry.savedStateHandle
+            val loadPresetId = savedStateHandle.get<Long>("load_preset_id")
+
             EditorScreen(
+                loadPresetId = loadPresetId,
+                onConsumeLoadPreset = { savedStateHandle.remove<Long>("load_preset_id") },
                 onNavigateToPresets = {
                     navController.navigate(Screen.Presets.route)
                 },
@@ -32,7 +38,11 @@ fun AppNavigation(navController: NavHostController) {
         }
         composable(Screen.Presets.route) {
             PresetsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onLoadPreset = { presetId ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set("load_preset_id", presetId)
+                    navController.popBackStack()
+                }
             )
         }
         composable(Screen.Settings.route) {

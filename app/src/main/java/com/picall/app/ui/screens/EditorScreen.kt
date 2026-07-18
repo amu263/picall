@@ -64,6 +64,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
+    loadPresetId: Long? = null,
+    onConsumeLoadPreset: () -> Unit = {},
     onNavigateToPresets: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
@@ -73,6 +75,18 @@ fun EditorScreen(
     val repo = remember { PresetRepository(db) }
     val vm: EditorViewModel = viewModel(factory = EditorViewModelFactory(repo))
     val s by vm.state.collectAsState()
+
+    // Load preset when returning from PresetsScreen
+    LaunchedEffect(loadPresetId) {
+        if (loadPresetId != null) {
+            val preset = repo.getPresetById(loadPresetId)
+            if (preset != null) {
+                vm.loadPreset(preset)
+                Toast.makeText(ctx, "已加载预设「${preset.name}」", Toast.LENGTH_SHORT).show()
+            }
+            onConsumeLoadPreset()
+        }
+    }
 
     val imgPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
